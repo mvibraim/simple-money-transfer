@@ -31,6 +31,7 @@ public abstract class AbstractIntegrationTest {
 		// H2 refuses TRUNCATE on any table referenced by a foreign key,
 		// even an empty referencing table, so DELETE is used instead -
 		// safe here since children are always cleared before parents.
+		jdbcClient.sql("DELETE FROM idempotency_record").update();
 		jdbcClient.sql("DELETE FROM ledger_entry").update();
 		jdbcClient.sql("DELETE FROM transfer").update();
 		jdbcClient.sql("DELETE FROM account").update();
