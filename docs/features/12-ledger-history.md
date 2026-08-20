@@ -1,6 +1,6 @@
 # F12 — Ledger history
 
-**Branch:** `feat/12-ledger-history` · **Depends on:** F11 · **Docker required:** yes
+**Branch:** `feat/12-ledger-history` · **Depends on:** F11
 
 ## Goal
 
@@ -21,7 +21,7 @@ point of building a double-entry ledger instead of a bare balance column.
 
 ## Design notes
 
-- **Known, accepted subtlety:** `ledger_entry.id` is a `bigserial`,
+- **Known, accepted subtlety:** `ledger_entry.id` is an identity column,
   assigned at insert time, but Postgres transactions can commit in a
   different order than they inserted — id 100 can become visible after id
   101 if transaction 100 is slower to commit. So `ORDER BY id` is
@@ -35,7 +35,6 @@ point of building a double-entry ledger instead of a bare balance column.
 ## Verification
 
 ```bash
-docker info
 ./gradlew build
 ```
 

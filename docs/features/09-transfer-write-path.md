@@ -1,6 +1,6 @@
 # F09 — The transfer write path
 
-**Branch:** `feat/09-transfer-write-path` · **Depends on:** F08 · **Docker required:** yes
+**Branch:** `feat/09-transfer-write-path` · **Depends on:** F08
 
 ## Goal
 
@@ -83,14 +83,23 @@ money creation.
 ## Verification
 
 ```bash
-docker info
-./gradlew build
+./gradlew test -PexcludeTags=integration   # Mockito: every rejection branch
+./gradlew build                            # H2: happy path + atomicity
 ```
 
-Integration tests: happy-path transfer moves both balances and posts a
-balanced ledger pair; each rejection path (insufficient funds, currency
-mismatch, self-transfer, inactive account) leaves balances and the ledger
-completely unchanged; `LedgerInvariants.assertAll` passes after every test.
+Split deliberately: **Mockito unit tests** mock `AccountRepository` and
+drive every validation and rejection branch (insufficient funds, currency
+mismatch, self-transfer, inactive account) without a Spring context or a
+database — fast, and exhaustive on the business-rule logic. **H2
+integration tests** cover the happy path end to end: both balances move,
+a balanced ledger pair is posted, and each rejection path leaves balances
+and the ledger completely unchanged. `LedgerInvariants.assertAll` passes
+after every integration test.
+
+H2 does support real `SELECT ... FOR UPDATE` row-level locking, so the
+happy-path and atomicity tests genuinely exercise the lock-then-mutate
+sequence — what they do *not* exercise is Postgres's specific deadlock
+behavior under lock-order violation (see F00 and F15).
 
 ## Review focus
 

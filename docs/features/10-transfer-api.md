@@ -1,6 +1,6 @@
 # F10 — Transfer API
 
-**Branch:** `feat/10-transfer-api` · **Depends on:** F09 · **Docker required:** yes
+**Branch:** `feat/10-transfer-api` · **Depends on:** F09
 
 ## Goal
 
@@ -32,7 +32,6 @@ almost entirely wiring, because the hard part already landed in F09.
 ## Verification
 
 ```bash
-docker info
 ./gradlew build
 ```
 

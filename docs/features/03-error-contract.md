@@ -1,6 +1,6 @@
 # F03 — Error contract
 
-**Branch:** `feat/03-error-contract` · **Depends on:** F02 · **Docker required:** no
+**Branch:** `feat/03-error-contract` · **Depends on:** F02
 
 ## Goal
 

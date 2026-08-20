@@ -1,6 +1,6 @@
 # F14 — Idempotent money movement
 
-**Branch:** `feat/14-idempotent-movement` · **Depends on:** F13 · **Docker required:** yes
+**Branch:** `feat/14-idempotent-movement` · **Depends on:** F13
 
 ## Goal
 
@@ -11,16 +11,19 @@ make every money-moving endpoint safe to retry.
 
 - `transfer/TransferOrchestrator` — `@Transactional(propagation =
   Propagation.NEVER)`, wraps `TransferService.execute`:
-  - Attempts to insert the idempotency claim **in the same transaction** as
-    the transfer itself.
-  - On success, the transfer and its claim commit together.
-  - On a unique-constraint violation (caught from the `PSQLException`,
-    discriminated **by constraint name**), reads the existing record in a
-    fresh transaction and returns the stored `response_status` /
-    `response_body` verbatim.
-  - On a business rejection (`BusinessRuleException` from F09), the whole
-    transaction — transfer attempt and claim insert together — rolls back,
-    so the key remains unused.
+  - Inserts the idempotency claim row and calls `flush()` **immediately**,
+    inside a narrowly-scoped try/catch, before any account is locked or
+    any ledger row is written.
+  - If that insert succeeds, proceeds to call `execute` in its own
+    transaction; on success, returns 201 with the transfer.
+  - If that insert throws `DataIntegrityViolationException`, the request
+    is a duplicate (see design notes for why nothing else could throw
+    there): reads the existing record in a fresh transaction and returns
+    the stored `response_status` / `response_body` verbatim, or 422 if the
+    fingerprint doesn't match.
+  - On a business rejection (`BusinessRuleException` from F09) inside
+    `execute`, the whole transaction — transfer attempt and claim insert
+    together — rolls back, so the key remains unused.
 - `Idempotency-Key` header becomes **required** on `POST /transfers`,
   `/deposits`, and `/withdrawals` — its absence is a 400.
 
@@ -35,28 +38,34 @@ make every money-moving endpoint safe to retry.
 
 - **The claim row lives in the same transaction as the transfer, not a
   separate "IN_PROGRESS" pre-claim.** This is a deliberate simplification
-  over a two-phase claim/complete design: because Postgres blocks a second
-  inserter on the unique index until the first transaction resolves,
-  concurrency is handled by the database's own locking rather than
-  application-level state. If the first transaction commits, the second
-  gets a unique violation and replays. If the first rolls back (a business
-  rejection), the second proceeds as if it were first. There is no
-  `IN_PROGRESS` state, and therefore no "409, please retry" response to
+  over a two-phase claim/complete design: because both H2 and Postgres
+  block a second inserter on the unique index until the first transaction
+  resolves, concurrency is handled by the database's own locking rather
+  than application-level state. If the first transaction commits, the
+  second gets a unique violation and replays. If the first rolls back (a
+  business rejection), the second proceeds as if it were first. There is
+  no `IN_PROGRESS` state, and therefore no "409, please retry" response to
   design around.
 - **Must run with `Propagation.NEVER` at the orchestrator level, calling
-  into `execute`'s own `@Transactional` boundary.** Postgres aborts an
+  into `execute`'s own `@Transactional` boundary.** Both engines abort an
   entire transaction on a constraint violation — there is no way to catch
   the violation and keep using the same transaction to read the
   now-visible conflicting row. The orchestrator therefore cannot itself be
   transactional; it must let `execute` run in its own transaction and
   handle the aftermath (success or violation) outside it.
-- **Recovery must discriminate on the constraint name.** A
-  `DataIntegrityViolationException` here could mean "the idempotency key
-  was reused" (`idempotency_key_unique` — the expected, replay-worthy
-  case) or "something else is broken" (e.g.
-  `ledger_one_entry_per_account` from F08 — a real bug). Treating every
-  unique violation as a replay would silently swallow the second class of
-  failure.
+- **Recovery is disambiguated by scoping, not by parsing constraint
+  names.** An earlier version of this design caught
+  `DataIntegrityViolationException` broadly around the whole write path
+  and inspected the underlying `PSQLException`'s constraint name to tell
+  "the idempotency key was reused" apart from "something else is broken."
+  That's fragile (string-matching a vendor-specific constraint name) and,
+  now that tests run on H2 rather than Postgres, not portable — H2's
+  exception doesn't carry the same constraint-name detail in the same
+  shape. The fix is structural instead: the claim insert is isolated to
+  its own tight try/catch, executed *before* any other write in the
+  request. A violation caught there can only be the idempotency-key unique
+  constraint, because nothing else has been written yet to violate
+  anything else.
 - **A business rejection leaves the key reusable, on purpose.** If a
   transfer is rejected for insufficient funds, the transaction — and the
   claim row with it — rolls back. A client that then deposits funds and
@@ -74,17 +83,18 @@ make every money-moving endpoint safe to retry.
 ## Verification
 
 ```bash
-docker info
 ./gradlew build
 ```
 
-Integration tests:
+Integration tests (H2):
 
 - Replay with an identical body → same transfer id, same response, exactly
   one movement recorded (`LedgerInvariants` still holds).
 - Same key, different amount → 422, fingerprint-mismatch detail.
 - `N` concurrent requests with the identical key and body → exactly one
-  `transfer` row, `N` responses all carrying that one transfer's id.
+  `transfer` row, `N` responses all carrying that one transfer's id. H2's
+  unique-index blocking is enough to prove this — no Postgres-specific
+  behavior is being relied on here.
 - **Key reusable after a failed attempt**: reject a transfer for
   insufficient funds using key `K`, deposit funds, retry the identical
   request with the same key `K` → 201. This is the test that proves the
@@ -93,9 +103,9 @@ Integration tests:
 
 ## Review focus
 
-- The constraint-name discrimination in the violation handler — a
-  regression here (treating all violations as replays) would be a silent
-  bug that only surfaces under a genuine data-integrity problem, i.e.
-  exactly when you can least afford it to misbehave.
+- The claim-insert scoping — confirm nothing else is written to the
+  database between the claim insert and its `flush()`/catch, since that
+  scoping is the entire basis for treating any violation caught there as
+  "duplicate key," full stop.
 - Confirm there is no code path, anywhere, that deletes or expires an
   `idempotency_record`.

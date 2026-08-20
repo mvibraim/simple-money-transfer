@@ -1,6 +1,6 @@
 # F07 — Account API
 
-**Branch:** `feat/07-account-api` · **Depends on:** F06 · **Docker required:** yes
+**Branch:** `feat/07-account-api` · **Depends on:** F06
 
 ## Goal
 
@@ -43,7 +43,6 @@ contract and F04's auth get exercised end to end.
 ## Verification
 
 ```bash
-docker info
 ./gradlew build
 ```
 

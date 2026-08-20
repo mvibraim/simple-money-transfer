@@ -1,13 +1,23 @@
-# F15 — Concurrency proof
+# F15 — Concurrency tests
 
-**Branch:** `feat/15-concurrency-proof` · **Depends on:** F14 · **Docker required:** yes
+**Branch:** `feat/15-concurrency-tests` · **Depends on:** F14
 
 ## Goal
 
-Prove, under real concurrent load against real Postgres, that F09's locking
-design does what its design notes claim: no lost updates, no deadlocks, and
-the ledger stays balanced. This is a test-only feature — no production code
-changes.
+Test F09's write path under real concurrent load: no lost updates, and the
+ledger stays balanced across many parallel transfers. This is a test-only
+feature — no production code changes.
+
+**Scope of what this proves, stated up front:** these tests run on H2, not
+Postgres (see F00's testing-strategy section). They verify that
+`TransferService.execute` serializes correctly under contention and that
+money is neither created nor destroyed. They are **not** proof of F09's
+specific claim about Postgres deadlock avoidance under the ascending-UUID
+lock-ordering design — H2 resolves lock contention with a timeout rather
+than Postgres's deadlock detector, so a genuine lock-ordering bug could
+surface here as a slow test, a spurious failure, or nothing at all. That
+property is verified by code review of the `order by a.id` query (F09) and
+by exercising the app against real Postgres by hand.
 
 ## Scope
 
@@ -18,12 +28,10 @@ changes.
      consistent with however many succeeded vs. were rejected for
      insufficient funds.
   2. **ABBA** — 16 threads transferring A→B concurrently with 16 threads
-     transferring B→A. This is the actual deadlock trigger: the
-     single-account scenario never creates a lock *cycle*, since it only
-     ever contends on one row.
+     transferring B→A. The single-account scenario never creates a lock
+     *cycle*, since it only ever contends on one row; this one does.
   3. **Ring** — 8 accounts, 64 threads each transferring between a randomly
-     chosen ordered pair, maximizing the chance of a longer lock cycle if
-     the ordering guarantee in F09 were ever broken.
+     chosen ordered pair, maximizing contention.
 - Every scenario asserts `LedgerInvariants.assertAll` (from F09) at the
   end: ledger sums to zero, every balance matches the sum of its entries,
   no negative customer balance, no orphaned transfer without exactly one
@@ -33,10 +41,12 @@ changes.
 
 - No production code changes — if a scenario here fails, the fix belongs
   in F09 (or an earlier feature), not here.
+- No claim of Postgres-specific deadlock-avoidance proof — see the scope
+  note above.
 
 ## Design notes
 
-Two traps that will silently produce a false-positive green suite if
+Three traps that will silently produce a false-positive green suite if
 missed:
 
 - **The test class must not be `@Transactional`.** Spring's test
@@ -53,19 +63,18 @@ missed:
   worker threads and a default or small Hikari pool, most threads queue for
   a connection behind the ones currently holding row locks. If that queue
   wait exceeds `connection-timeout`, the test fails with
-  `SQLTransientConnectionException` / 503 — which looks like a concurrency
+  `SQLTransientConnectionException` — which looks like a concurrency
   correctness bug but is actually a test-harness capacity problem. The
   test-scoped `application.yaml` needs a pool sized comfortably above the
   largest scenario's thread count.
-- Postgres is configured (via the F01 Testcontainers base, or explicit
-  session settings in this feature) with a short `deadlock_timeout` so
-  that if the ordering guarantee *were* broken, the test fails fast with a
-  clear deadlock error rather than hanging until a long default timeout.
+- **`DB_CLOSE_DELAY=-1` (from F01) is mandatory here.** Parallel workers
+  each take their own connection to the H2 in-memory database; without
+  that setting, the database is torn down the moment any one connection
+  closes, taking every other worker's session with it.
 
 ## Verification
 
 ```bash
-docker info
 ./gradlew build
 ```
 
@@ -76,5 +85,6 @@ locally, since a genuine race would be intermittent, not deterministic.
 
 - That the test class is confirmed not `@Transactional` (the single most
   likely way this whole feature accidentally tests nothing).
-- The ABBA and ring scenarios specifically — the single-account scenario
-  alone would not have caught a broken lock-ordering guarantee.
+- That the spec and any test comments are honest about scope: these tests
+  back the "no lost updates" claim, not the Postgres-specific
+  deadlock-avoidance claim.

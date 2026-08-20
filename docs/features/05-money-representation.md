@@ -1,6 +1,6 @@
 # F05 — Money representation
 
-**Branch:** `feat/05-money-representation` · **Depends on:** F04 · **Docker required:** no
+**Branch:** `feat/05-money-representation` · **Depends on:** F04
 
 ## Goal
 

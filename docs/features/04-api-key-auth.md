@@ -1,6 +1,6 @@
 # F04 — API key authentication
 
-**Branch:** `feat/04-api-key-auth` · **Depends on:** F03 · **Docker required:** no
+**Branch:** `feat/04-api-key-auth` · **Depends on:** F03
 
 ## Goal
 

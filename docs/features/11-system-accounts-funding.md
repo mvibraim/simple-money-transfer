@@ -1,6 +1,6 @@
 # F11 — System accounts + funding
 
-**Branch:** `feat/11-system-accounts-funding` · **Depends on:** F10 · **Docker required:** yes
+**Branch:** `feat/11-system-accounts-funding` · **Depends on:** F10
 
 ## Goal
 
@@ -44,7 +44,6 @@ left by F07 (accounts always open at zero).
 ## Verification
 
 ```bash
-docker info
 ./gradlew build
 ```
 

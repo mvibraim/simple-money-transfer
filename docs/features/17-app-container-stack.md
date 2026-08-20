@@ -1,6 +1,6 @@
 # F17 — App container stack
 
-**Branch:** `feat/17-app-container-stack` · **Depends on:** F16 · **Docker required:** yes
+**Branch:** `feat/17-app-container-stack` · **Depends on:** F16
 
 ## Goal
 
