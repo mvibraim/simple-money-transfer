@@ -7,6 +7,25 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set — copy .env.example to .env and fill it in}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
+    command:
+      # Required together, not individually (F16): pessimistic locking
+      # (F09) turns one stuck transaction into held row locks, and without
+      # these a slow transaction can block others indefinitely rather than
+      # failing fast with a 503 the client can retry.
+      - "postgres"
+      - "-c"
+      - "lock_timeout=3000"
+      - "-c"
+      - "statement_timeout=15000"
+      - "-c"
+      - "idle_in_transaction_session_timeout=60000"
+      # The highest-value pair for actually finding concurrency bugs in
+      # dev: every lock wait past 200ms is logged with the blocking PID
+      # and statement.
+      - "-c"
+      - "deadlock_timeout=200ms"
+      - "-c"
+      - "log_lock_waits=on"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-money} -d ${POSTGRES_DB:-money}"]
       interval: 2s

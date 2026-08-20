@@ -3,9 +3,18 @@ spring:
     name: simple-money-transfers
   datasource:
     # No defaults: a missing secret must fail startup, not run silently.
+    # The application connects as the least-privilege money_app role
+    # (F16, postgresql/V6__app_role.sql) - not the migration owner below.
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      # Bounded on purpose: pessimistic locking (F09) turns one stuck
+      # transaction into held row locks, and an unbounded pool would let
+      # those pile up until the database itself falls over rather than
+      # failing fast with a 503 a client can retry.
+      maximum-pool-size: 20
+      connection-timeout: 3000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -13,10 +22,31 @@ spring:
   flyway:
     clean-disabled: true
     locations: classpath:db/migration/common,classpath:db/migration/{vendor}
+    # Flyway migrates as the schema owner, independently of the
+    # datasource credentials above - the running application never has
+    # DDL rights, and it's how V6 can create money_app while running with
+    # privileges money_app itself is deliberately denied.
+    user: ${SPRING_FLYWAY_USER}
+    password: ${SPRING_FLYWAY_PASSWORD}
+    placeholders:
+      # Map keys under spring.flyway.placeholders are used literally by
+      # Flyway, not relaxed-bound like most Boot properties - this key
+      # must match V6's ${app_password} reference exactly, underscore
+      # included. Not a hardcoded secret: this is what V6 uses to create
+      # money_app, so it must be the same value as spring.datasource.password
+      # above.
+      app_password: ${SPRING_DATASOURCE_PASSWORD}
   jackson:
     deserialization:
       fail-on-unknown-properties: true
       use-big-decimal-for-floats: true
+  threads:
+    virtual:
+      # Safe on the Java 25 toolchain (JEP 491 removed the old
+      # synchronized-block pinning behavior). Does not raise database
+      # throughput on its own - the pessimistic locks and the pool size
+      # above set that ceiling regardless of the thread model.
+      enabled: true
 
 app:
   security:
