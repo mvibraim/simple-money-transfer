@@ -9,7 +9,7 @@ Docker** — see "Testing strategy" below.
 | # | Branch | Scope |
 |---|---|---|
 | 00 | `docs/feature-specs` | This roadmap + all specs below |
-| 01 | `feat/01-h2-foundation` | Deps, `application.yaml`, H2 test harness → green build |
+| 01 | `feat/01-postgres-foundation` | Deps, `application.yaml`, H2 test harness → green build |
 | 02 | `feat/02-dev-database-compose` | `compose.yaml` for local Postgres, `.env.example` |
 | 03 | `feat/03-error-contract` | RFC 9457 `ProblemDetail` advice + domain exception types |
 | 04 | `feat/04-api-key-auth` | `ApiKeyAuthFilter`, `SecurityConfig`, actuator lockdown |

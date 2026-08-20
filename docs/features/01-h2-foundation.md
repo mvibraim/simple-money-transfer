@@ -1,6 +1,6 @@
 # F01 — H2 foundation (green build)
 
-**Branch:** `feat/01-h2-foundation` · **Depends on:** F00
+**Branch:** `feat/01-postgres-foundation` · **Depends on:** F00
 
 ## Goal
 
