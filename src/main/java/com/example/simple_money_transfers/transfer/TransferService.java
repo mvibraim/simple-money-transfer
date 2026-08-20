@@ -1,0 +1,101 @@
+package com.example.simple_money_transfers.transfer;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.example.simple_money_transfers.account.Account;
+import com.example.simple_money_transfers.account.AccountRepository;
+import com.example.simple_money_transfers.account.AccountStatus;
+import com.example.simple_money_transfers.account.AccountType;
+import com.example.simple_money_transfers.error.NotFoundException;
+import com.example.simple_money_transfers.ledger.Direction;
+import com.example.simple_money_transfers.ledger.LedgerEntry;
+import com.example.simple_money_transfers.ledger.LedgerEntryRepository;
+import com.example.simple_money_transfers.money.InvalidMoneyException;
+import com.example.simple_money_transfers.money.MoneyNormalizer;
+
+/**
+ * The single place in the codebase that ever mutates an account balance or
+ * writes a ledger entry. See the F09 design doc for why locking is ordered
+ * and pessimistic - the short version: {@link AccountRepository#lockAllById}
+ * acquires both accounts in one query, ascending by id, which is what makes
+ * two opposing concurrent transfers resolve to a wait instead of a deadlock.
+ * That guarantee holds only as long as no other code path locks an account
+ * outside that one query.
+ */
+@Service
+public class TransferService {
+
+	private final AccountRepository accountRepository;
+	private final TransferRepository transferRepository;
+	private final LedgerEntryRepository ledgerEntryRepository;
+
+	public TransferService(AccountRepository accountRepository, TransferRepository transferRepository,
+			LedgerEntryRepository ledgerEntryRepository) {
+		this.accountRepository = accountRepository;
+		this.transferRepository = transferRepository;
+		this.ledgerEntryRepository = ledgerEntryRepository;
+	}
+
+	@Transactional
+	public Transfer execute(TransferCommand command) {
+		if (command.sourceAccountId().equals(command.targetAccountId())) {
+			throw new SelfTransferException();
+		}
+		if (command.amount() == null || command.amount().signum() <= 0) {
+			throw new InvalidMoneyException("Amount must be positive");
+		}
+		BigDecimal amount = MoneyNormalizer.normalize(command.amount(), command.currency());
+
+		List<Account> accounts = accountRepository.lockAllById(
+				List.of(command.sourceAccountId(), command.targetAccountId()));
+		if (accounts.size() != 2) {
+			throw new NotFoundException("Source and/or target account not found");
+		}
+		Account source = accountById(accounts, command.sourceAccountId());
+		Account target = accountById(accounts, command.targetAccountId());
+
+		if (source.getStatus() != AccountStatus.ACTIVE) {
+			throw new InactiveAccountException(source.getId());
+		}
+		if (target.getStatus() != AccountStatus.ACTIVE) {
+			throw new InactiveAccountException(target.getId());
+		}
+		if (!source.getCurrency().equals(command.currency()) || !target.getCurrency().equals(command.currency())) {
+			throw new CurrencyMismatchException(command.currency(), source.getCurrency(), target.getCurrency());
+		}
+		// SYSTEM accounts are the exempt-from-overdraft boundary where
+		// money enters and leaves the system (F11); only CUSTOMER
+		// accounts are subject to the insufficient-funds business rule.
+		if (source.getAccountType() == AccountType.CUSTOMER && source.getBalance().compareTo(amount) < 0) {
+			throw new InsufficientFundsException(source.getId());
+		}
+
+		BigDecimal sourceBalanceAfter = source.getBalance().subtract(amount);
+		BigDecimal targetBalanceAfter = target.getBalance().add(amount);
+		source.setBalance(sourceBalanceAfter);
+		target.setBalance(targetBalanceAfter);
+
+		Transfer transfer = transferRepository.save(new Transfer(
+				source.getId(), target.getId(), amount, command.currency(), command.kind(), command.reference()));
+
+		ledgerEntryRepository.save(new LedgerEntry(
+				transfer.getId(), source.getId(), Direction.DEBIT, amount.negate(), command.currency(), sourceBalanceAfter));
+		ledgerEntryRepository.save(new LedgerEntry(
+				transfer.getId(), target.getId(), Direction.CREDIT, amount, command.currency(), targetBalanceAfter));
+
+		return transfer;
+	}
+
+	private static Account accountById(List<Account> accounts, UUID id) {
+		return accounts.stream()
+				.filter(account -> account.getId().equals(id))
+				.findFirst()
+				.orElseThrow(() -> new NotFoundException("Account %s not found".formatted(id)));
+	}
+
+}
