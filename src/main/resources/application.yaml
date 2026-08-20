@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: simple-money-transfers
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    clean-disabled: true
