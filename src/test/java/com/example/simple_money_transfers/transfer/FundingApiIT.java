@@ -4,6 +4,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.UUID;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +41,10 @@ class FundingApiIT extends AbstractIntegrationTest {
 		LedgerInvariants.assertAll(jdbcClient);
 	}
 
+	private static String freshIdempotencyKey() {
+		return UUID.randomUUID().toString();
+	}
+
 	@Test
 	void depositMovesTheBalanceAndKeepsTheLedgerBalanced() throws Exception {
 		Account account = accountRepository.save(
@@ -46,6 +52,7 @@ class FundingApiIT extends AbstractIntegrationTest {
 
 		mockMvc.perform(post("/api/v1/accounts/" + account.getId() + "/deposits")
 						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", freshIdempotencyKey())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"amount":"50.00","reference":"top-up"}"""))
@@ -64,6 +71,7 @@ class FundingApiIT extends AbstractIntegrationTest {
 
 		mockMvc.perform(post("/api/v1/accounts/" + account.getId() + "/withdrawals")
 						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", freshIdempotencyKey())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"amount":"10.00"}"""))
@@ -77,6 +85,7 @@ class FundingApiIT extends AbstractIntegrationTest {
 
 		mockMvc.perform(post("/api/v1/accounts/" + account.getId() + "/deposits")
 						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", freshIdempotencyKey())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"amount":"10.00"}"""))
@@ -90,9 +99,23 @@ class FundingApiIT extends AbstractIntegrationTest {
 
 		mockMvc.perform(post("/api/v1/accounts/" + account.getId() + "/deposits")
 						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", freshIdempotencyKey())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"amount":"-5.00"}"""))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void missingIdempotencyKeyIsRejectedWith400() throws Exception {
+		Account account = accountRepository.save(
+				new Account("D4", "Depositor", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+
+		mockMvc.perform(post("/api/v1/accounts/" + account.getId() + "/deposits")
+						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"amount":"10.00"}"""))
 				.andExpect(status().isBadRequest());
 	}
 
@@ -115,6 +138,7 @@ class FundingApiIT extends AbstractIntegrationTest {
 
 		mockMvc.perform(post("/api/v1/accounts/" + account.getId() + "/deposits")
 						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", freshIdempotencyKey())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"amount":"75.00"}"""))
@@ -122,6 +146,7 @@ class FundingApiIT extends AbstractIntegrationTest {
 
 		mockMvc.perform(post("/api/v1/accounts/" + account.getId() + "/withdrawals")
 						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", freshIdempotencyKey())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"amount":"75.00"}"""))
@@ -129,6 +154,32 @@ class FundingApiIT extends AbstractIntegrationTest {
 
 		Account reloaded = accountRepository.findById(account.getId()).orElseThrow();
 		org.assertj.core.api.Assertions.assertThat(reloaded.getBalance()).isEqualByComparingTo("0.0000");
+	}
+
+	@Test
+	void replayingTheSameDepositKeyReturnsTheSameResultWithoutDoublingTheBalance() throws Exception {
+		Account account = accountRepository.save(
+				new Account("D5", "Depositor", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+		String key = freshIdempotencyKey();
+		String body = """
+				{"amount":"20.00"}""";
+
+		mockMvc.perform(post("/api/v1/accounts/" + account.getId() + "/deposits")
+						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", key)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body))
+				.andExpect(status().isCreated());
+
+		mockMvc.perform(post("/api/v1/accounts/" + account.getId() + "/deposits")
+						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", key)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body))
+				.andExpect(status().isCreated());
+
+		Account reloaded = accountRepository.findById(account.getId()).orElseThrow();
+		org.assertj.core.api.Assertions.assertThat(reloaded.getBalance()).isEqualByComparingTo("20.0000");
 	}
 
 }
