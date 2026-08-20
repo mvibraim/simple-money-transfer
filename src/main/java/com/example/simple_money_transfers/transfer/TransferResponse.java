@@ -14,7 +14,7 @@ public record TransferResponse(
 		String reference,
 		Instant createdAt) {
 
-	static TransferResponse from(Transfer transfer) {
+	public static TransferResponse from(Transfer transfer) {
 		return new TransferResponse(
 				transfer.getId(),
 				transfer.getSourceAccountId(),

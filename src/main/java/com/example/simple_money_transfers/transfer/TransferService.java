@@ -97,6 +97,39 @@ public class TransferService {
 				.orElseThrow(() -> new NotFoundException("Transfer %s not found".formatted(id)));
 	}
 
+	/**
+	 * Always in the account's own currency - there is no FX conversion, so
+	 * asking the caller to restate the currency would only invite a
+	 * spurious mismatch. Reuses {@link #execute}, so this funding path
+	 * gets every invariant (locking, atomicity, the balanced ledger) that
+	 * the core transfer already established, for free.
+	 */
+	@Transactional
+	public Transfer deposit(UUID accountId, BigDecimal amount, String reference) {
+		Account target = requireAccount(accountId);
+		Account system = systemAccountFor(target.getCurrency());
+		return execute(new TransferCommand(
+				system.getId(), target.getId(), amount, target.getCurrency(), TransferKind.DEPOSIT, reference));
+	}
+
+	@Transactional
+	public Transfer withdraw(UUID accountId, BigDecimal amount, String reference) {
+		Account source = requireAccount(accountId);
+		Account system = systemAccountFor(source.getCurrency());
+		return execute(new TransferCommand(
+				source.getId(), system.getId(), amount, source.getCurrency(), TransferKind.WITHDRAWAL, reference));
+	}
+
+	private Account requireAccount(UUID id) {
+		return accountRepository.findById(id)
+				.orElseThrow(() -> new NotFoundException("Account %s not found".formatted(id)));
+	}
+
+	private Account systemAccountFor(String currency) {
+		return accountRepository.findByAccountTypeAndCurrency(AccountType.SYSTEM, currency)
+				.orElseThrow(() -> new UnsupportedCurrencyException(currency));
+	}
+
 	private static Account accountById(List<Account> accounts, UUID id) {
 		return accounts.stream()
 				.filter(account -> account.getId().equals(id))

@@ -37,20 +37,16 @@ class TransferServiceIT extends AbstractIntegrationTest {
 	}
 
 	/**
-	 * Funds a test account through a real DEPOSIT transfer from a
-	 * throwaway SYSTEM account, rather than setting the balance directly -
-	 * a direct balance write with no matching ledger entry would violate
-	 * the very invariant {@link LedgerInvariants} checks after every test.
+	 * Funds a test account through a real deposit (F11's seeded SYSTEM
+	 * accounts), rather than setting the balance directly - a direct
+	 * balance write with no matching ledger entry would violate the very
+	 * invariant {@link LedgerInvariants} checks after every test.
 	 */
 	private Account fundedAccount(String ref, BigDecimal balance, String currency, AccountStatus status) {
 		Account account = accountRepository.save(
 				new Account(ref, "Holder " + ref, AccountType.CUSTOMER, currency, AccountStatus.ACTIVE));
 		if (balance.signum() > 0) {
-			Account system = accountRepository.save(
-					new Account("SYS-" + UUID.randomUUID().toString().substring(0, 8), "System", AccountType.SYSTEM,
-							currency, AccountStatus.ACTIVE));
-			transferService.execute(new TransferCommand(
-					system.getId(), account.getId(), balance, currency, TransferKind.DEPOSIT, null));
+			transferService.deposit(account.getId(), balance, null);
 		}
 		if (status != AccountStatus.ACTIVE) {
 			jdbcClient.sql("UPDATE account SET status = ? WHERE id = ?")
@@ -146,11 +142,15 @@ class TransferServiceIT extends AbstractIntegrationTest {
 
 	@Test
 	void systemAccountSourceIsExemptFromInsufficientFunds() {
-		Account system = accountRepository.save(new Account("SYS1", "System", AccountType.SYSTEM, "USD", AccountStatus.ACTIVE));
-		Account customer = fundedAccount("C1", new BigDecimal("0.00"), "USD", AccountStatus.ACTIVE);
+		// CHF deliberately: this test drives execute() directly with an
+		// explicit account id, not through deposit()'s currency lookup, but
+		// a second SYSTEM/USD row would still collide with F11's seeded one
+		// for any other test relying on that lookup.
+		Account system = accountRepository.save(new Account("SYS1", "System", AccountType.SYSTEM, "CHF", AccountStatus.ACTIVE));
+		Account customer = fundedAccount("C1", new BigDecimal("0.00"), "CHF", AccountStatus.ACTIVE);
 
 		Transfer deposit = transferService.execute(new TransferCommand(
-				system.getId(), customer.getId(), new BigDecimal("50.00"), "USD", TransferKind.DEPOSIT, null));
+				system.getId(), customer.getId(), new BigDecimal("50.00"), "CHF", TransferKind.DEPOSIT, null));
 
 		assertThat(deposit.getId()).isNotNull();
 		assertThat(accountRepository.findById(system.getId()).orElseThrow().getBalance()).isEqualByComparingTo("-50.0000");

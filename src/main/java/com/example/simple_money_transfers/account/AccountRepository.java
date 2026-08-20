@@ -2,6 +2,7 @@ package com.example.simple_money_transfers.account;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.persistence.LockModeType;
@@ -24,5 +25,7 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select a from Account a where a.id in :ids order by a.id")
 	List<Account> lockAllById(@Param("ids") Collection<UUID> ids);
+
+	Optional<Account> findByAccountTypeAndCurrency(AccountType accountType, String currency);
 
 }
