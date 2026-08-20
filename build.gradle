@@ -44,3 +44,9 @@ tasks.named('test') {
 		}
 	}
 }
+
+tasks.named('bootBuildImage') {
+	// Fixed name/tag, not the default group/name/version-derived one, so
+	// compose.app.yaml can reference it predictably.
+	imageName = 'simple-money-transfers:latest'
+}
