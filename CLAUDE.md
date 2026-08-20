@@ -6,6 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an unmodified Spring Initializr scaffold — there is no domain code yet. `SimpleMoneyTransfersApplication` (the `@SpringBootApplication` entry point) and a `contextLoads` smoke test are the only two source files. Everything under `com.example.simple_money_transfers` is greenfield.
 
+## AI collaboration conventions
+
+- **Planning** — architecture and design decisions, entering plan mode, anything before code gets written: **Opus** at **xhigh** effort. This is a money-movement service; the design surface (ledger correctness, concurrency, idempotency) is worth the deeper pass before a line of code exists.
+- **Everything else** — implementation, tests, docs, reviews, routine fixes: **Sonnet** at **high** effort. Switch back down once a plan is agreed and execution starts; don't stay on Opus/xhigh through routine work.
+
 ## Commands
 
 ```bash
