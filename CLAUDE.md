@@ -6,6 +6,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an unmodified Spring Initializr scaffold — there is no domain code yet. `SimpleMoneyTransfersApplication` (the `@SpringBootApplication` entry point) and a `contextLoads` smoke test are the only two source files. Everything under `com.example.simple_money_transfers` is greenfield.
 
+## Package structure
+
+This project uses a **layer-based** package structure, not a feature-based one — organize by technical role, not by domain/feature. Every class under `com.example.simple_money_transfers` belongs in exactly one of these top-level packages:
+
+- `repository` — Spring Data repository interfaces; the persistence layer contract only, no query logic beyond derived/`@Query` methods.
+- `model` — entities and DTOs together, split into `model.entity` (`@Entity` classes) and `model.dto` (request/response DTOs). Don't scatter either under `controller` or `service`.
+- `controller` — `@RestController` classes: request/response mapping and validation entry points only, no business logic.
+- `service` — business logic and orchestration; the only layer allowed to coordinate across multiple repositories.
+- `exception` — custom exception types plus `@ExceptionHandler` / `@ControllerAdvice` classes.
+- `config` — `@Configuration` classes and bean definitions.
+- `util` — stateless helper classes with no Spring-managed state.
+
+When adding a new class, place it by what it *is* (controller, service, entity, ...), not by which feature it supports — there is no `transfer/`, `account/`, etc. feature package.
+
 ## AI collaboration conventions
 
 - **Planning** — architecture and design decisions, entering plan mode, anything before code gets written: **Opus** at **xhigh** effort. This is a money-movement service; the design surface (ledger correctness, concurrency, idempotency) is worth the deeper pass before a line of code exists.
