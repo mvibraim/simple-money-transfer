@@ -64,9 +64,7 @@ tasks.named('bootBuildImage') {
 
 sonar {
 	properties {
-		// CHANGE_ME: replace with the org/project key SonarCloud assigns
-		// when you import this repo (Sonar dashboard > project > Information).
-		property "sonar.organization", "mvibraim"
+		property "sonar.organization", "mvibraim-simple-money-transfer"
 		property "sonar.projectKey", "mvibraim-simple-money-transfer"
 		property "sonar.host.url", "https://sonarcloud.io"
 	}
