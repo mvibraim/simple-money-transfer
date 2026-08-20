@@ -80,16 +80,6 @@ step 3 is what produces a clean 422; the constraint exists purely so that
 a future bug in that check becomes a failed transaction instead of silent
 money creation.
 
-**The insufficient-funds check applies only to `CUSTOMER` sources.** A
-`SYSTEM` account is where money enters and leaves the system (F11); its
-balance is expected to run indefinitely negative as deposits accumulate,
-exactly mirroring the DB's own `account_no_overdraft` exemption
-(`account_type <> 'CUSTOMER' OR balance >= 0`). Missing this consistently
-at the business-logic layer would have made every deposit fail with a
-false "insufficient funds" once F11 tried to use `execute` for real —
-caught here, before F11 exists, by writing the business-logic test for it
-now rather than waiting to discover it against a real deposit flow.
-
 ## Verification
 
 ```bash
@@ -110,22 +100,6 @@ H2 does support real `SELECT ... FOR UPDATE` row-level locking, so the
 happy-path and atomicity tests genuinely exercise the lock-then-mutate
 sequence — what they do *not* exercise is Postgres's specific deadlock
 behavior under lock-order violation (see F00 and F15).
-
-**Test fixtures fund test accounts through a real `DEPOSIT` transfer**
-(from a throwaway `SYSTEM` account created in the test), not by setting
-`balance` directly — a direct write with no matching ledger entry would
-itself violate the invariant `LedgerInvariants` exists to check. This
-surfaced a real gap earlier than planned: `LedgerInvariants.assertAll`
-checks the ledger *globally*, so once it started running after F09's
-tests, a leftover row from F06's `AccountRepositoryIT` (which sets a
-`SYSTEM` account's balance directly via raw SQL to test the CHECK
-constraint — correct for that test's own narrow purpose, unrelated to the
-ledger) failed the check purely because all integration tests share one
-H2 database for the whole run. Fixed by adding per-test cleanup to
-`AbstractIntegrationTest` itself (`DELETE FROM` the domain tables,
-children before parents, in `@AfterEach`) rather than deferring it to
-F15 as originally planned — H2 refuses `TRUNCATE` on any table referenced
-by a foreign key, even an empty one, so `DELETE` is used instead.
 
 ## Review focus
 
