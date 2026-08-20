@@ -9,58 +9,33 @@ make every money-moving endpoint safe to retry.
 
 ## Scope
 
-- `transfer/IdempotentTransferAttempt` — a separate Spring bean holding
-  the one `@Transactional` method that does the real work: run the
-  transfer action, then insert the idempotency claim and `flush()`
-  immediately, within that same transaction.
-- `transfer/TransferOrchestrator` — the public entry point
-  (`transfer`/`deposit`/`withdraw`), each `@Transactional(propagation =
-  Propagation.NEVER)`:
-  - Computes the request fingerprint, then calls
-    `IdempotentTransferAttempt.run(...)`.
-  - On success, returns 201 with the transfer, serialized once as the
-    literal JSON string that gets stored for replay.
-  - If that call throws `DataIntegrityViolationException` (see design
-    notes for why nothing else could throw it there), the request is a
-    duplicate: reads the existing record in a fresh transaction and
-    returns the stored `response_status` / `response_body` verbatim, or
-    422 if the fingerprint doesn't match.
-  - On a business rejection (`BusinessRuleException` from F09), the whole
-    transaction — transfer attempt and claim insert together — rolls
-    back, so the key remains unused.
+- `transfer/TransferOrchestrator` — `@Transactional(propagation =
+  Propagation.NEVER)`, wraps `TransferService.execute`:
+  - Inserts the idempotency claim row and calls `flush()` **immediately**,
+    inside a narrowly-scoped try/catch, before any account is locked or
+    any ledger row is written.
+  - If that insert succeeds, proceeds to call `execute` in its own
+    transaction; on success, returns 201 with the transfer.
+  - If that insert throws `DataIntegrityViolationException`, the request
+    is a duplicate (see design notes for why nothing else could throw
+    there): reads the existing record in a fresh transaction and returns
+    the stored `response_status` / `response_body` verbatim, or 422 if the
+    fingerprint doesn't match.
+  - On a business rejection (`BusinessRuleException` from F09) inside
+    `execute`, the whole transaction — transfer attempt and claim insert
+    together — rolls back, so the key remains unused.
 - `Idempotency-Key` header becomes **required** on `POST /transfers`,
-  `/deposits`, and `/withdrawals` — its absence is a 400
-  (`MissingRequestHeaderException`, newly mapped in `ApiExceptionHandler`).
-- `IdempotencyConflictException extends BusinessRuleException` (422) —
-  same key, different fingerprint.
+  `/deposits`, and `/withdrawals` — its absence is a 400.
 
 ## Explicitly not in this feature
 
 - No TTL or cleanup job for idempotency records — deliberately, see design
   notes.
-- No change to F09's `TransferService` itself — its three entry points
-  (`execute`, `deposit`, `withdraw`) keep their existing signatures
-  unchanged; the idempotency layer wraps them without modification.
+- No change to F09's `TransferService` itself — the transactional
+  boundary and replay logic live entirely in the new orchestrator layer.
 
 ## Design notes
 
-- **The claim insert happens after the transfer action runs, not before —
-  a deliberate departure from the original plan, forced by a genuine
-  constraint conflict.** The original design wanted the claim inserted
-  and flushed *before* any account is locked, so a known duplicate fails
-  fast without doing the expensive work. But `idempotency_record.
-  transfer_id` is `NOT NULL` (F13), and a transfer's id isn't known until
-  `TransferService.execute`/`deposit`/`withdraw` actually creates it — and
-  changing `TransferService` to accept a caller-supplied id was
-  explicitly out of scope for this feature. Given that constraint, the
-  claim is inserted immediately *after* the transfer action returns, but
-  still inside the *same* transaction. Correctness is identical either
-  way: if the claim insert's flush fails, the whole transaction — action
-  included — rolls back, so a losing concurrent duplicate never leaves a
-  partial transfer behind. The only real difference is efficiency, not
-  safety: a losing duplicate now does the full locking/mutation work
-  before being told to discard it, rather than failing before starting.
-  `IdempotentTransferAttempt`'s Javadoc documents this trade-off.
 - **The claim row lives in the same transaction as the transfer, not a
   separate "IN_PROGRESS" pre-claim.** This is a deliberate simplification
   over a two-phase claim/complete design: because both H2 and Postgres
@@ -71,37 +46,26 @@ make every money-moving endpoint safe to retry.
   business rejection), the second proceeds as if it were first. There is
   no `IN_PROGRESS` state, and therefore no "409, please retry" response to
   design around.
-- **The transactional claim-and-execute logic lives on a *different* bean
-  than the orchestrator that calls it — not a private method on
-  `TransferOrchestrator` itself.** Spring's transactional proxy only
-  intercepts calls that arrive from a different bean; a `this.`-qualified
-  call to a private (or even public) method on the same instance bypasses
-  the proxy entirely; and a *private* method can never be proxied at all,
-  regardless of caller. `IdempotentTransferAttempt` exists specifically so
-  that calling it from `TransferOrchestrator` goes through a real proxy,
-  and `execute`/`deposit`/`withdraw` (already their own proxied beans, on
-  `TransferService`) correctly *join* that active transaction via default
-  `REQUIRED` propagation rather than starting their own.
-- **`TransferOrchestrator`'s entry methods run with `Propagation.NEVER`.**
-  Both engines abort an entire transaction on a constraint violation —
-  there is no way to catch the violation and keep using the same
-  transaction to read the now-visible conflicting row. `NEVER` asserts
-  this structurally: if a future refactor ever wrapped a controller in
-  its own `@Transactional`, calling into the orchestrator would fail
-  loudly instead of silently breaking the "separate transactions for
-  attempt vs. replay" design.
+- **Must run with `Propagation.NEVER` at the orchestrator level, calling
+  into `execute`'s own `@Transactional` boundary.** Both engines abort an
+  entire transaction on a constraint violation — there is no way to catch
+  the violation and keep using the same transaction to read the
+  now-visible conflicting row. The orchestrator therefore cannot itself be
+  transactional; it must let `execute` run in its own transaction and
+  handle the aftermath (success or violation) outside it.
 - **Recovery is disambiguated by scoping, not by parsing constraint
   names.** An earlier version of this design caught
-  `DataIntegrityViolationException` broadly and inspected the underlying
-  `PSQLException`'s constraint name to tell "the idempotency key was
-  reused" apart from "something else is broken." That's fragile
-  (string-matching a vendor-specific constraint name) and, now that tests
-  run on H2 rather than Postgres, not portable. The fix is structural: a
-  transfer action's own work always creates a fresh `transfer_id`, so it
-  can never collide with any of F08's constraints (all scoped to a
-  specific `transfer_id`) — the *only* plausible source of
-  `DataIntegrityViolationException` from `IdempotentTransferAttempt.run`
-  is the idempotency-key unique index.
+  `DataIntegrityViolationException` broadly around the whole write path
+  and inspected the underlying `PSQLException`'s constraint name to tell
+  "the idempotency key was reused" apart from "something else is broken."
+  That's fragile (string-matching a vendor-specific constraint name) and,
+  now that tests run on H2 rather than Postgres, not portable — H2's
+  exception doesn't carry the same constraint-name detail in the same
+  shape. The fix is structural instead: the claim insert is isolated to
+  its own tight try/catch, executed *before* any other write in the
+  request. A violation caught there can only be the idempotency-key unique
+  constraint, because nothing else has been written yet to violate
+  anything else.
 - **A business rejection leaves the key reusable, on purpose.** If a
   transfer is rejected for insufficient funds, the transaction — and the
   claim row with it — rolls back. A client that then deposits funds and
@@ -115,12 +79,6 @@ make every money-moving endpoint safe to retry.
   pressure ever makes retention a real concern, the fix is to keep the
   `(client_id, idempotency_key) → transfer_id` mapping forever and drop
   only the cached `response_body`, never the key itself.
-- **The stored and replayed response body is the literal JSON string**,
-  produced once via the app's own `JsonMapper` bean and returned as
-  `ResponseEntity<String>` with an explicit `application/json` content
-  type — not re-serialized from a freshly-loaded `Transfer` on replay.
-  "Verbatim" is taken literally: a replay is byte-for-byte identical to
-  the original response, not merely semantically equivalent.
 
 ## Verification
 
@@ -128,32 +86,26 @@ make every money-moving endpoint safe to retry.
 ./gradlew build
 ```
 
-Integration tests (H2), in `transfer/IdempotencyIT`:
+Integration tests (H2):
 
-- Replay with an identical body → identical response body byte-for-byte,
-  exactly one `transfer` row, correct final balances
-  (`LedgerInvariants` still holds throughout).
-- Same key, different amount → 422.
-- 8 concurrent requests (virtual threads) with the identical key and body
-  → all return 201, exactly one `transfer` row exists, the balance moved
-  exactly once. H2's unique-index blocking is enough to prove this — no
-  Postgres-specific behavior is relied on here.
+- Replay with an identical body → same transfer id, same response, exactly
+  one movement recorded (`LedgerInvariants` still holds).
+- Same key, different amount → 422, fingerprint-mismatch detail.
+- `N` concurrent requests with the identical key and body → exactly one
+  `transfer` row, `N` responses all carrying that one transfer's id. H2's
+  unique-index blocking is enough to prove this — no Postgres-specific
+  behavior is being relied on here.
 - **Key reusable after a failed attempt**: reject a transfer for
   insufficient funds using key `K`, deposit funds, retry the identical
   request with the same key `K` → 201. This is the test that proves the
   roll-back-the-claim design actually works end to end, not just in
   isolation.
 
-Also verified by hand against real Postgres 18: a replayed transfer
-returns a byte-identical response with the same `id`/`createdAt`, the
-balance moves only once, a missing `Idempotency-Key` returns 400 with a
-clear detail, and `SUM(ledger_entry.amount)` stays exactly zero.
-
 ## Review focus
 
-- That `IdempotentTransferAttempt` is a genuinely separate bean from
-  `TransferOrchestrator` — merging them back into one class would
-  silently break the transactional-proxy self-invocation guarantee this
-  whole design rests on, with no compiler error to catch it.
+- The claim-insert scoping — confirm nothing else is written to the
+  database between the claim insert and its `flush()`/catch, since that
+  scoping is the entire basis for treating any violation caught there as
+  "duplicate key," full stop.
 - Confirm there is no code path, anywhere, that deletes or expires an
   `idempotency_record`.
