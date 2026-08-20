@@ -12,6 +12,10 @@ spring:
     open-in-view: false
   flyway:
     clean-disabled: true
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+      use-big-decimal-for-floats: true
 
 app:
   security:

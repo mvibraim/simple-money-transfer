@@ -10,9 +10,8 @@ retrofitting auth across an already-large test suite later.
 
 ## Scope
 
-- `build.gradle`: `spring-boot-starter-security` + `spring-boot-starter-security-test`,
-  `spring-boot-starter-actuator` + `spring-boot-starter-actuator-test` (the
-  actuator lockdown below needs `/actuator/health` to actually exist).
+- `build.gradle`: `spring-boot-starter-security` +
+  `spring-boot-starter-security-test`.
 - `config/AppProperties` — binds `app.security.api-keys[].{id,key}` as a
   `List<ApiKeyEntry>`, validated (`@NotEmpty`, minimum key length) so a
   missing or weak secret fails application startup rather than running
