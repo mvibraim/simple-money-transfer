@@ -1,5 +1,6 @@
 package com.example.simple_money_transfers.error;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -58,6 +59,14 @@ class ApiExceptionHandlerTest {
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.detail").value("Malformed request body"));
+	}
+
+	@Test
+	void malformedPathVariableMapsTo400() throws Exception {
+		mockMvc.perform(get("/probe/type-mismatch/not-a-uuid"))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.detail").value("Malformed value for parameter 'id'"));
 	}
 
 	@Test
