@@ -20,6 +20,14 @@ This project uses a **layer-based** package structure, not a feature-based one �
 
 When adding a new class, place it by what it *is* (controller, service, entity, ...), not by which feature it supports — there is no `transfer/`, `account/`, etc. feature package.
 
+## Code style
+
+Formatting is enforced, not a matter of taste: **Google Java Format**, applied via the Spotless Gradle plugin (`com.diffplug.spotless`, `googleJavaFormat()` step). Two-space indentation, no tabs — this superseded the tab-indented style Spring Initializr scaffolds with.
+
+- `./gradlew spotlessApply` — reformat before committing.
+- `./gradlew spotlessCheck` — what CI's `Format` job runs; a PR with unformatted Java fails this check independently of `Build`/`Lint`/`Test`.
+- Don't hand-format to match Google Java Format's output — let the tool do it, and don't fight it with manual line breaks or alignment.
+
 ## AI collaboration conventions
 
 - **Planning** — architecture and design decisions, entering plan mode, anything before code gets written: **Opus** at **xhigh** effort. This is a money-movement service; the design surface (ledger correctness, concurrency, idempotency) is worth the deeper pass before a line of code exists.

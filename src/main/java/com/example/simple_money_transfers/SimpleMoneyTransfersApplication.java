@@ -13,8 +13,7 @@ import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoCon
 @ConfigurationPropertiesScan
 public class SimpleMoneyTransfersApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(SimpleMoneyTransfersApplication.class, args);
-	}
-
+  public static void main(String[] args) {
+    SpringApplication.run(SimpleMoneyTransfersApplication.class, args);
+  }
 }

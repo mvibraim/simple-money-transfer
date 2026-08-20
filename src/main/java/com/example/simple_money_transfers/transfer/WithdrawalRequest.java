@@ -1,10 +1,9 @@
 package com.example.simple_money_transfers.transfer;
 
-import java.math.BigDecimal;
-
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 
-public record WithdrawalRequest(@NotNull @Positive BigDecimal amount, @Size(max = 140) String reference) {
-}
+public record WithdrawalRequest(
+    @NotNull @Positive BigDecimal amount, @Size(max = 140) String reference) {}
