@@ -3,6 +3,10 @@ spring:
     name: simple-money-transfers
   datasource:
     url: "jdbc:h2:mem:money;MODE=PostgreSQL;DB_CLOSE_DELAY=-1"
+    hikari:
+      # Comfortably above F15's largest concurrency scenario (64 threads),
+      # so a queued-connection timeout never masquerades as a concurrency bug.
+      maximum-pool-size: 80
   jpa:
     hibernate:
       ddl-auto: validate
