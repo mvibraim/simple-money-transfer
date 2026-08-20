@@ -11,13 +11,15 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class AppProperties {
 
-  @NotEmpty private List<@Valid ApiKeyEntry> apiKeys = new ArrayList<>();
+	@NotEmpty
+	private List<@Valid ApiKeyEntry> apiKeys = new ArrayList<>();
 
-  public List<ApiKeyEntry> getApiKeys() {
-    return apiKeys;
-  }
+	public List<ApiKeyEntry> getApiKeys() {
+		return apiKeys;
+	}
 
-  public void setApiKeys(List<ApiKeyEntry> apiKeys) {
-    this.apiKeys = apiKeys;
-  }
+	public void setApiKeys(List<ApiKeyEntry> apiKeys) {
+		this.apiKeys = apiKeys;
+	}
+
 }

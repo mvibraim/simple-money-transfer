@@ -14,37 +14,34 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 public class ApiKeyAuthFilter extends OncePerRequestFilter {
 
-  public static final String HEADER_NAME = "X-API-Key";
+	public static final String HEADER_NAME = "X-API-Key";
 
-  private final AppProperties appProperties;
+	private final AppProperties appProperties;
 
-  public ApiKeyAuthFilter(AppProperties appProperties) {
-    this.appProperties = appProperties;
-  }
+	public ApiKeyAuthFilter(AppProperties appProperties) {
+		this.appProperties = appProperties;
+	}
 
-  @Override
-  protected void doFilterInternal(
-      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-      throws ServletException, IOException {
-    String presentedKey = request.getHeader(HEADER_NAME);
-    if (presentedKey != null) {
-      matchingClientId(presentedKey)
-          .ifPresent(
-              clientId -> {
-                var authentication =
-                    new UsernamePasswordAuthenticationToken(clientId, null, List.of());
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-              });
-    }
-    filterChain.doFilter(request, response);
-  }
+	@Override
+	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+			throws ServletException, IOException {
+		String presentedKey = request.getHeader(HEADER_NAME);
+		if (presentedKey != null) {
+			matchingClientId(presentedKey).ifPresent(clientId -> {
+				var authentication = new UsernamePasswordAuthenticationToken(clientId, null, List.of());
+				SecurityContextHolder.getContext().setAuthentication(authentication);
+			});
+		}
+		filterChain.doFilter(request, response);
+	}
 
-  private java.util.Optional<String> matchingClientId(String presentedKey) {
-    byte[] presented = presentedKey.getBytes(StandardCharsets.UTF_8);
-    return appProperties.getApiKeys().stream()
-        .filter(
-            entry -> MessageDigest.isEqual(presented, entry.key().getBytes(StandardCharsets.UTF_8)))
-        .map(ApiKeyEntry::id)
-        .findFirst();
-  }
+	private java.util.Optional<String> matchingClientId(String presentedKey) {
+		byte[] presented = presentedKey.getBytes(StandardCharsets.UTF_8);
+		return appProperties.getApiKeys()
+			.stream()
+			.filter(entry -> MessageDigest.isEqual(presented, entry.key().getBytes(StandardCharsets.UTF_8)))
+			.map(ApiKeyEntry::id)
+			.findFirst();
+	}
+
 }

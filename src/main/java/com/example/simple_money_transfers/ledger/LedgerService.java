@@ -11,20 +11,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LedgerService {
 
-  private final AccountRepository accountRepository;
-  private final LedgerEntryRepository ledgerEntryRepository;
+	private final AccountRepository accountRepository;
 
-  public LedgerService(
-      AccountRepository accountRepository, LedgerEntryRepository ledgerEntryRepository) {
-    this.accountRepository = accountRepository;
-    this.ledgerEntryRepository = ledgerEntryRepository;
-  }
+	private final LedgerEntryRepository ledgerEntryRepository;
 
-  @Transactional(readOnly = true)
-  public Page<LedgerEntry> getHistory(UUID accountId, Pageable pageable) {
-    if (!accountRepository.existsById(accountId)) {
-      throw new NotFoundException("Account %s not found".formatted(accountId));
-    }
-    return ledgerEntryRepository.findByAccountId(accountId, pageable);
-  }
+	public LedgerService(AccountRepository accountRepository, LedgerEntryRepository ledgerEntryRepository) {
+		this.accountRepository = accountRepository;
+		this.ledgerEntryRepository = ledgerEntryRepository;
+	}
+
+	@Transactional(readOnly = true)
+	public Page<LedgerEntry> getHistory(UUID accountId, Pageable pageable) {
+		if (!accountRepository.existsById(accountId)) {
+			throw new NotFoundException("Account %s not found".formatted(accountId));
+		}
+		return ledgerEntryRepository.findByAccountId(accountId, pageable);
+	}
+
 }

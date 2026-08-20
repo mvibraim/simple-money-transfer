@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 
 class SimpleMoneyTransfersApplicationTests extends AbstractIntegrationTest {
 
-  @Test
-  void contextLoads() {}
+	@Test
+	void contextLoads() {
+	}
+
 }

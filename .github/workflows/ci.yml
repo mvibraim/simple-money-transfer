@@ -28,8 +28,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Spotless check (Google Java Format)
-        run: ./gradlew spotlessCheck
+      - name: Spring Java Format check
+        run: ./gradlew checkFormat
 
   build:
     name: Build

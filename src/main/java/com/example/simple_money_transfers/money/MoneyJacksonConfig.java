@@ -11,25 +11,26 @@ import tools.jackson.databind.ValueSerializer;
 import tools.jackson.databind.module.SimpleModule;
 
 /**
- * Amounts serialize as JSON strings, not bare numbers, so a JavaScript client (backed by IEEE 754
- * doubles) can't lose precision before the value ever reaches this service.
+ * Amounts serialize as JSON strings, not bare numbers, so a JavaScript client (backed by
+ * IEEE 754 doubles) can't lose precision before the value ever reaches this service.
  */
 @Configuration
 public class MoneyJacksonConfig {
 
-  @Bean
-  JsonMapperBuilderCustomizer bigDecimalAsStringCustomizer() {
-    SimpleModule module = new SimpleModule();
-    module.addSerializer(BigDecimal.class, new BigDecimalAsStringSerializer());
-    return builder -> builder.addModule(module);
-  }
+	@Bean
+	JsonMapperBuilderCustomizer bigDecimalAsStringCustomizer() {
+		SimpleModule module = new SimpleModule();
+		module.addSerializer(BigDecimal.class, new BigDecimalAsStringSerializer());
+		return builder -> builder.addModule(module);
+	}
 
-  private static final class BigDecimalAsStringSerializer extends ValueSerializer<BigDecimal> {
+	private static final class BigDecimalAsStringSerializer extends ValueSerializer<BigDecimal> {
 
-    @Override
-    public void serialize(BigDecimal value, JsonGenerator gen, SerializationContext ctxt)
-        throws JacksonException {
-      gen.writeString(value.toPlainString());
-    }
-  }
+		@Override
+		public void serialize(BigDecimal value, JsonGenerator gen, SerializationContext ctxt) throws JacksonException {
+			gen.writeString(value.toPlainString());
+		}
+
+	}
+
 }

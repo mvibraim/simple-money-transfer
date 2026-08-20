@@ -22,11 +22,11 @@ When adding a new class, place it by what it *is* (controller, service, entity, 
 
 ## Code style
 
-Formatting is enforced, not a matter of taste: **Google Java Format**, applied via the Spotless Gradle plugin (`com.diffplug.spotless`, `googleJavaFormat()` step). Two-space indentation, no tabs — this superseded the tab-indented style Spring Initializr scaffolds with.
+Formatting is enforced, not a matter of taste: **Spring Java Format** (`io.spring.javaformat` Gradle plugin), the same formatter Spring Framework and Spring Boot use on themselves. Tabs, not spaces — this matches the tab-indented style Spring Initializr scaffolds with, so no reformat-away-from-the-scaffold tension.
 
-- `./gradlew spotlessApply` — reformat before committing.
-- `./gradlew spotlessCheck` — what CI's `Format` job runs; a PR with unformatted Java fails this check independently of `Build`/`Lint`/`Test`.
-- Don't hand-format to match Google Java Format's output — let the tool do it, and don't fight it with manual line breaks or alignment.
+- `./gradlew format` — reformat before committing.
+- `./gradlew checkFormat` — what CI's `Format` job runs; also wired into `check`, so a plain `./gradlew build` catches formatting violations too. A PR with unformatted Java fails the `Format` check independently of `Build`/`Lint`/`Test`.
+- Don't hand-format to match Spring Java Format's output — let the tool do it, and don't fight it with manual line breaks or alignment.
 
 ## AI collaboration conventions
 

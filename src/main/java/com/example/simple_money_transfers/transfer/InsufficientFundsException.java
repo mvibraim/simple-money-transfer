@@ -5,7 +5,8 @@ import java.util.UUID;
 
 public class InsufficientFundsException extends BusinessRuleException {
 
-  public InsufficientFundsException(UUID accountId) {
-    super("Account %s has insufficient funds".formatted(accountId));
-  }
+	public InsufficientFundsException(UUID accountId) {
+		super("Account %s has insufficient funds".formatted(accountId));
+	}
+
 }

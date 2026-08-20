@@ -25,62 +25,57 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/accounts")
 public class AccountController {
 
-  private final AccountService accountService;
-  private final TransferOrchestrator transferOrchestrator;
-  private final LedgerService ledgerService;
+	private final AccountService accountService;
 
-  public AccountController(
-      AccountService accountService,
-      TransferOrchestrator transferOrchestrator,
-      LedgerService ledgerService) {
-    this.accountService = accountService;
-    this.transferOrchestrator = transferOrchestrator;
-    this.ledgerService = ledgerService;
-  }
+	private final TransferOrchestrator transferOrchestrator;
 
-  @PostMapping
-  public ResponseEntity<AccountResponse> create(@Valid @RequestBody CreateAccountRequest request) {
-    Account account = accountService.createAccount(request);
-    return ResponseEntity.created(URI.create("/api/v1/accounts/" + account.getId()))
-        .body(AccountResponse.from(account));
-  }
+	private final LedgerService ledgerService;
 
-  @GetMapping("/{id}")
-  public AccountResponse get(@PathVariable UUID id) {
-    return AccountResponse.from(accountService.getAccount(id));
-  }
+	public AccountController(AccountService accountService, TransferOrchestrator transferOrchestrator,
+			LedgerService ledgerService) {
+		this.accountService = accountService;
+		this.transferOrchestrator = transferOrchestrator;
+		this.ledgerService = ledgerService;
+	}
 
-  @GetMapping("/{id}/balance")
-  public BalanceResponse balance(@PathVariable UUID id) {
-    return BalanceResponse.from(accountService.getAccount(id));
-  }
+	@PostMapping
+	public ResponseEntity<AccountResponse> create(@Valid @RequestBody CreateAccountRequest request) {
+		Account account = accountService.createAccount(request);
+		return ResponseEntity.created(URI.create("/api/v1/accounts/" + account.getId()))
+			.body(AccountResponse.from(account));
+	}
 
-  @PostMapping("/{id}/deposits")
-  public ResponseEntity<String> deposit(
-      @PathVariable UUID id,
-      @RequestHeader("Idempotency-Key") String idempotencyKey,
-      Principal principal,
-      @Valid @RequestBody DepositRequest request) {
-    return transferOrchestrator.deposit(principal.getName(), idempotencyKey, id, request);
-  }
+	@GetMapping("/{id}")
+	public AccountResponse get(@PathVariable UUID id) {
+		return AccountResponse.from(accountService.getAccount(id));
+	}
 
-  @PostMapping("/{id}/withdrawals")
-  public ResponseEntity<String> withdraw(
-      @PathVariable UUID id,
-      @RequestHeader("Idempotency-Key") String idempotencyKey,
-      Principal principal,
-      @Valid @RequestBody WithdrawalRequest request) {
-    return transferOrchestrator.withdraw(principal.getName(), idempotencyKey, id, request);
-  }
+	@GetMapping("/{id}/balance")
+	public BalanceResponse balance(@PathVariable UUID id) {
+		return BalanceResponse.from(accountService.getAccount(id));
+	}
 
-  @GetMapping("/{id}/entries")
-  public LedgerHistoryResponse entries(
-      @PathVariable UUID id,
-      @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "20") int size) {
-    // Ordering is fixed to id DESC (matching F08's idx_ledger_account_history
-    // index) and is not client-selectable - only page/size are.
-    var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-    return LedgerHistoryResponse.from(ledgerService.getHistory(id, pageable));
-  }
+	@PostMapping("/{id}/deposits")
+	public ResponseEntity<String> deposit(@PathVariable UUID id,
+			@RequestHeader("Idempotency-Key") String idempotencyKey, Principal principal,
+			@Valid @RequestBody DepositRequest request) {
+		return transferOrchestrator.deposit(principal.getName(), idempotencyKey, id, request);
+	}
+
+	@PostMapping("/{id}/withdrawals")
+	public ResponseEntity<String> withdraw(@PathVariable UUID id,
+			@RequestHeader("Idempotency-Key") String idempotencyKey, Principal principal,
+			@Valid @RequestBody WithdrawalRequest request) {
+		return transferOrchestrator.withdraw(principal.getName(), idempotencyKey, id, request);
+	}
+
+	@GetMapping("/{id}/entries")
+	public LedgerHistoryResponse entries(@PathVariable UUID id, @RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "20") int size) {
+		// Ordering is fixed to id DESC (matching F08's idx_ledger_account_history
+		// index) and is not client-selectable - only page/size are.
+		var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+		return LedgerHistoryResponse.from(ledgerService.getHistory(id, pageable));
+	}
+
 }

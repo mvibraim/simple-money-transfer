@@ -5,5 +5,5 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
-public record DepositRequest(
-    @NotNull @Positive BigDecimal amount, @Size(max = 140) String reference) {}
+public record DepositRequest(@NotNull @Positive BigDecimal amount, @Size(max = 140) String reference) {
+}

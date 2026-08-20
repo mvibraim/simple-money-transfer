@@ -10,40 +10,36 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AccountService {
 
-  private static final String REF_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  private static final SecureRandom RANDOM = new SecureRandom();
+	private static final String REF_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-  private final AccountRepository accountRepository;
+	private static final SecureRandom RANDOM = new SecureRandom();
 
-  public AccountService(AccountRepository accountRepository) {
-    this.accountRepository = accountRepository;
-  }
+	private final AccountRepository accountRepository;
 
-  @Transactional
-  public Account createAccount(CreateAccountRequest request) {
-    MoneyNormalizer.requireValidCurrency(request.currency());
-    Account account =
-        new Account(
-            generateAccountRef(),
-            request.holderName(),
-            AccountType.CUSTOMER,
-            request.currency(),
-            AccountStatus.ACTIVE);
-    return accountRepository.save(account);
-  }
+	public AccountService(AccountRepository accountRepository) {
+		this.accountRepository = accountRepository;
+	}
 
-  @Transactional(readOnly = true)
-  public Account getAccount(UUID id) {
-    return accountRepository
-        .findById(id)
-        .orElseThrow(() -> new NotFoundException("Account %s not found".formatted(id)));
-  }
+	@Transactional
+	public Account createAccount(CreateAccountRequest request) {
+		MoneyNormalizer.requireValidCurrency(request.currency());
+		Account account = new Account(generateAccountRef(), request.holderName(), AccountType.CUSTOMER,
+				request.currency(), AccountStatus.ACTIVE);
+		return accountRepository.save(account);
+	}
 
-  private static String generateAccountRef() {
-    StringBuilder ref = new StringBuilder("ACCT-");
-    for (int i = 0; i < 12; i++) {
-      ref.append(REF_ALPHABET.charAt(RANDOM.nextInt(REF_ALPHABET.length())));
-    }
-    return ref.toString();
-  }
+	@Transactional(readOnly = true)
+	public Account getAccount(UUID id) {
+		return accountRepository.findById(id)
+			.orElseThrow(() -> new NotFoundException("Account %s not found".formatted(id)));
+	}
+
+	private static String generateAccountRef() {
+		StringBuilder ref = new StringBuilder("ACCT-");
+		for (int i = 0; i < 12; i++) {
+			ref.append(REF_ALPHABET.charAt(RANDOM.nextInt(REF_ALPHABET.length())));
+		}
+		return ref.toString();
+	}
+
 }

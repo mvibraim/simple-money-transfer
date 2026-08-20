@@ -16,25 +16,24 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/transfers")
 public class TransferController {
 
-  private final TransferService transferService;
-  private final TransferOrchestrator transferOrchestrator;
+	private final TransferService transferService;
 
-  public TransferController(
-      TransferService transferService, TransferOrchestrator transferOrchestrator) {
-    this.transferService = transferService;
-    this.transferOrchestrator = transferOrchestrator;
-  }
+	private final TransferOrchestrator transferOrchestrator;
 
-  @PostMapping
-  public ResponseEntity<String> create(
-      @RequestHeader("Idempotency-Key") String idempotencyKey,
-      Principal principal,
-      @Valid @RequestBody CreateTransferRequest request) {
-    return transferOrchestrator.transfer(principal.getName(), idempotencyKey, request);
-  }
+	public TransferController(TransferService transferService, TransferOrchestrator transferOrchestrator) {
+		this.transferService = transferService;
+		this.transferOrchestrator = transferOrchestrator;
+	}
 
-  @GetMapping("/{id}")
-  public TransferResponse get(@PathVariable UUID id) {
-    return TransferResponse.from(transferService.getTransfer(id));
-  }
+	@PostMapping
+	public ResponseEntity<String> create(@RequestHeader("Idempotency-Key") String idempotencyKey, Principal principal,
+			@Valid @RequestBody CreateTransferRequest request) {
+		return transferOrchestrator.transfer(principal.getName(), idempotencyKey, request);
+	}
+
+	@GetMapping("/{id}")
+	public TransferResponse get(@PathVariable UUID id) {
+		return TransferResponse.from(transferService.getTransfer(id));
+	}
+
 }

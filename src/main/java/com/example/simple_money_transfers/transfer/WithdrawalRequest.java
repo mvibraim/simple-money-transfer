@@ -5,5 +5,5 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
-public record WithdrawalRequest(
-    @NotNull @Positive BigDecimal amount, @Size(max = 140) String reference) {}
+public record WithdrawalRequest(@NotNull @Positive BigDecimal amount, @Size(max = 140) String reference) {
+}
