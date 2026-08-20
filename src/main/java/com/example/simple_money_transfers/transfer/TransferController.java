@@ -1,6 +1,6 @@
 package com.example.simple_money_transfers.transfer;
 
-import java.net.URI;
+import java.security.Principal;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,18 +18,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class TransferController {
 
 	private final TransferService transferService;
+	private final TransferOrchestrator transferOrchestrator;
 
-	public TransferController(TransferService transferService) {
+	public TransferController(TransferService transferService, TransferOrchestrator transferOrchestrator) {
 		this.transferService = transferService;
+		this.transferOrchestrator = transferOrchestrator;
 	}
 
 	@PostMapping
-	public ResponseEntity<TransferResponse> create(@Valid @RequestBody CreateTransferRequest request) {
-		Transfer transfer = transferService.execute(new TransferCommand(
-				request.sourceAccountId(), request.targetAccountId(), request.amount(), request.currency(),
-				TransferKind.TRANSFER, request.reference()));
-		return ResponseEntity.created(URI.create("/api/v1/transfers/" + transfer.getId()))
-				.body(TransferResponse.from(transfer));
+	public ResponseEntity<String> create(
+			@RequestHeader("Idempotency-Key") String idempotencyKey,
+			Principal principal,
+			@Valid @RequestBody CreateTransferRequest request) {
+		return transferOrchestrator.transfer(principal.getName(), idempotencyKey, request);
 	}
 
 	@GetMapping("/{id}")

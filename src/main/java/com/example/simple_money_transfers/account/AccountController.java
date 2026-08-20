@@ -1,6 +1,7 @@
 package com.example.simple_money_transfers.account;
 
 import java.net.URI;
+import java.security.Principal;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,9 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.simple_money_transfers.ledger.LedgerHistoryResponse;
 import com.example.simple_money_transfers.ledger.LedgerService;
 import com.example.simple_money_transfers.transfer.DepositRequest;
-import com.example.simple_money_transfers.transfer.Transfer;
-import com.example.simple_money_transfers.transfer.TransferResponse;
-import com.example.simple_money_transfers.transfer.TransferService;
+import com.example.simple_money_transfers.transfer.TransferOrchestrator;
 import com.example.simple_money_transfers.transfer.WithdrawalRequest;
 
 @RestController
@@ -28,12 +28,12 @@ import com.example.simple_money_transfers.transfer.WithdrawalRequest;
 public class AccountController {
 
 	private final AccountService accountService;
-	private final TransferService transferService;
+	private final TransferOrchestrator transferOrchestrator;
 	private final LedgerService ledgerService;
 
-	public AccountController(AccountService accountService, TransferService transferService, LedgerService ledgerService) {
+	public AccountController(AccountService accountService, TransferOrchestrator transferOrchestrator, LedgerService ledgerService) {
 		this.accountService = accountService;
-		this.transferService = transferService;
+		this.transferOrchestrator = transferOrchestrator;
 		this.ledgerService = ledgerService;
 	}
 
@@ -55,17 +55,21 @@ public class AccountController {
 	}
 
 	@PostMapping("/{id}/deposits")
-	public ResponseEntity<TransferResponse> deposit(@PathVariable UUID id, @Valid @RequestBody DepositRequest request) {
-		Transfer transfer = transferService.deposit(id, request.amount(), request.reference());
-		return ResponseEntity.created(URI.create("/api/v1/transfers/" + transfer.getId()))
-				.body(TransferResponse.from(transfer));
+	public ResponseEntity<String> deposit(
+			@PathVariable UUID id,
+			@RequestHeader("Idempotency-Key") String idempotencyKey,
+			Principal principal,
+			@Valid @RequestBody DepositRequest request) {
+		return transferOrchestrator.deposit(principal.getName(), idempotencyKey, id, request);
 	}
 
 	@PostMapping("/{id}/withdrawals")
-	public ResponseEntity<TransferResponse> withdraw(@PathVariable UUID id, @Valid @RequestBody WithdrawalRequest request) {
-		Transfer transfer = transferService.withdraw(id, request.amount(), request.reference());
-		return ResponseEntity.created(URI.create("/api/v1/transfers/" + transfer.getId()))
-				.body(TransferResponse.from(transfer));
+	public ResponseEntity<String> withdraw(
+			@PathVariable UUID id,
+			@RequestHeader("Idempotency-Key") String idempotencyKey,
+			Principal principal,
+			@Valid @RequestBody WithdrawalRequest request) {
+		return transferOrchestrator.withdraw(principal.getName(), idempotencyKey, id, request);
 	}
 
 	@GetMapping("/{id}/entries")
