@@ -2,9 +2,12 @@ package com.example.simple_money_transfers.error;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -57,6 +60,20 @@ public class ApiExceptionHandler {
 	public ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
 				"Malformed value for parameter '" + ex.getName() + "'");
+	}
+
+	/**
+	 * Pessimistic locking (F09) turns one slow or stuck transaction into
+	 * held row locks; without this mapping, pool exhaustion or a lock/
+	 * statement timeout under contention would fall through to the
+	 * generic 500 handler below and look like an application bug rather
+	 * than a temporary capacity limit a client can reasonably retry.
+	 */
+	@ExceptionHandler({CannotCreateTransactionException.class, PessimisticLockingFailureException.class, QueryTimeoutException.class})
+	public ProblemDetail handleTemporarilyUnavailable(Exception ex) {
+		log.warn("Temporarily unavailable: {}", ex.getMessage());
+		return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
+				"The service is temporarily unable to process this request; please retry");
 	}
 
 	@ExceptionHandler(Exception.class)

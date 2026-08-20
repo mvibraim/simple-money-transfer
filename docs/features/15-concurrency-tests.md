@@ -54,13 +54,11 @@ missed:
   rolls it back at the end. Under that annotation, the "parallel" workers
   either serialize behind the test's own connection/transaction or never
   actually commit against each other, and every invariant assertion passes
-  vacuously — the test would look green while testing nothing.
-  `AbstractIntegrationTest` (added in F09, not deferred to here as
-  originally planned — a cross-test-pollution bug surfaced as soon as
-  `LedgerInvariants` started running) already clears `ledger_entry`,
-  `transfer`, and `account` via `DELETE FROM` in `@AfterEach` before this
-  feature exists, so no additional cleanup is needed here — just don't
-  undermine it with `@Transactional`.
+  vacuously — the test would look green while testing nothing. Cleanup is
+  therefore manual: `TRUNCATE account, transfer, ledger_entry,
+  idempotency_record RESTART IDENTITY CASCADE` in `@AfterEach` (never
+  `flyway_schema_history`), or scope each test to its own freshly created
+  accounts.
 - **Size the test datasource pool above the thread count.** With, say, 64
   worker threads and a default or small Hikari pool, most threads queue for
   a connection behind the ones currently holding row locks. If that queue
