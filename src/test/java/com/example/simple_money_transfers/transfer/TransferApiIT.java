@@ -56,11 +56,7 @@ class TransferApiIT extends AbstractIntegrationTest {
 		Account account = accountRepository.save(
 				new Account(ref, "Holder " + ref, AccountType.CUSTOMER, currency, AccountStatus.ACTIVE));
 		if (balance.signum() > 0) {
-			Account system = accountRepository.save(new Account(
-					"SYS-" + UUID.randomUUID().toString().substring(0, 8), "System", AccountType.SYSTEM,
-					currency, AccountStatus.ACTIVE));
-			transferService.execute(new TransferCommand(
-					system.getId(), account.getId(), balance, currency, TransferKind.DEPOSIT, null));
+			transferService.deposit(account.getId(), balance, null);
 		}
 		return accountRepository.findById(account.getId()).orElseThrow();
 	}
