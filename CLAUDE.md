@@ -28,10 +28,10 @@ Always invoke the wrapper (`./gradlew`), never a system-installed `gradle` — t
 DataSourceProperties$DataSourceBeanCreationException
 ```
 
-`spring-boot-starter-data-jpa` is on the classpath, but `application.properties` sets only `spring.application.name` and there is no embedded database dependency. Any `@SpringBootTest` will fail to start a context until a datasource exists. Before writing feature code, resolve this deliberately — don't work around it by weakening tests to avoid loading the context, and don't reach for H2 as a shortcut; see Testing conventions below for why:
+`spring-boot-starter-data-jpa` is on the classpath, but `application.properties` sets only `spring.application.name` and there is no embedded database dependency. Any `@SpringBootTest` will fail to start a context until a datasource exists. Before writing feature code, resolve this deliberately — don't work around it by weakening tests to avoid loading the context; see Testing conventions below:
 
-- **Local dev**: `org.springframework.boot:spring-boot-docker-compose` (`developmentOnly`) driving a `compose.yaml` for the real engine.
-- **Tests**: `org.springframework.boot:spring-boot-testcontainers` (`testImplementation`) plus the matching `org.testcontainers:<engine>` module, with a `@Container @ServiceConnection`-annotated container. Both paths auto-wire `spring.datasource.*` from the running container — don't hand-roll a JDBC URL alongside them.
+- **Tests**: H2 as `testRuntimeOnly`, in-memory — resolves the `@SpringBootTest` context-loading failure with no external process and no Docker dependency.
+- **Local dev**: `org.springframework.boot:spring-boot-docker-compose` (`developmentOnly`) driving a `compose.yaml`, if `bootRun` should hit something closer to the real production engine than H2.
 
 ## Spring Boot 4.1 / Spring Framework 7 conventions
 
@@ -53,12 +53,11 @@ Versions come from the `io.spring.dependency-management` BOM, so add dependencie
 
 ## Testing conventions
 
-Mockito and Testcontainers are this project's testing strategy — no H2, no hand-rolled fakes, no stub servers standing in for the database.
+Mockito and an in-memory H2 database are this project's testing strategy — no Testcontainers, no Docker dependency in the test suite, no hand-rolled fakes.
 
 - **Unit tests with no Spring context**: plain Mockito — `@ExtendWith(MockitoExtension.class)`, `@Mock`, `@InjectMocks`. Arrives transitively through the `-test` starters, no extra dependency needed.
 - **Slice or `@SpringBootTest` tests that need to replace a bean**: `@MockitoBean` / `@MockitoSpyBean` from `spring-test`, not the deprecated `@MockBean` / `@SpyBean` from `spring-boot-test` (removed as of Boot 3.4). `@MockitoSpyBean` wraps the real bean instead of replacing it, so its lifecycle and dependencies still run — that's a behavioral difference from the old `@SpyBean`, not just a rename.
-- **Anything that touches a datasource**: Testcontainers, never H2. Add `org.springframework.boot:spring-boot-testcontainers` (`testImplementation`) plus the specific engine module (e.g. `org.testcontainers:postgresql`), then annotate a static container field with both `@Container` and `@ServiceConnection` — Spring wires `spring.datasource.*` from the running container automatically, no `@DynamicPropertySource` needed.
-- This requires a Docker daemon reachable in every environment that runs these tests, local and CI. For fast local iteration, enable container reuse (`testcontainers.reuse.enable=true` in `~/.testcontainers.properties`) rather than falling back to H2 to dodge the startup cost.
+- **Integration tests that need a real datasource**: H2, in-memory, `testRuntimeOnly` — every run is hermetic, with no container startup cost and no Docker daemon required in CI. If the production engine's SQL dialect diverges from H2's defaults, point H2 at the matching compatibility mode (e.g. `jdbc:h2:mem:...;MODE=PostgreSQL`) rather than skipping context-loading tests over the mismatch.
 
 ## Java 25 toolchain
 
