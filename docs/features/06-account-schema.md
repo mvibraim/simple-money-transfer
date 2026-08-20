@@ -20,7 +20,7 @@ concerns.
     account_ref   VARCHAR(34)  NOT NULL UNIQUE,
     holder_name   VARCHAR(140) NOT NULL,
     account_type  VARCHAR(16)  NOT NULL DEFAULT 'CUSTOMER',
-    currency      VARCHAR(3)   NOT NULL,
+    currency      CHAR(3)      NOT NULL,
     balance       NUMERIC(19,4) NOT NULL DEFAULT 0,
     status        VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE',
     version       BIGINT       NOT NULL DEFAULT 0,
@@ -57,20 +57,6 @@ concerns.
   has no H2 equivalent; `regexp_like(string, pattern)` exists in both
   engines with identical semantics, so it's the portable choice for
   `common/`.
-- **`VARCHAR(3)` instead of `CHAR(3)` for `currency`.** Verified the hard
-  way: `CHAR(3)` plus an explicit `@Column(columnDefinition = "CHAR(3)")`
-  validates fine on H2, but Hibernate's Postgres dialect reports the
-  column back as `bpchar` at schema-validation time and the raw
-  `columnDefinition` string doesn't resolve the same way there — the
-  validator error even claimed it expected `Types#VARCHAR` despite the
-  literal string being `"CHAR(3)"`, which is exactly the kind of
-  dialect-dependent fragility that makes raw `columnDefinition` risky
-  under `ddl-auto: validate`. `VARCHAR(3)` with `@Column(length = 3)`
-  instead lets Hibernate's own standard length-based VARCHAR mapping
-  validate consistently on both engines, and behaves identically to
-  `CHAR(3)` in practice since every currency code is always exactly 3
-  characters (the CHECK constraint and `MoneyNormalizer` both guarantee
-  that — no padding difference ever manifests).
 - `currency` is immutable after creation
   (`@Column(updatable = false)` on the entity). This is load-bearing for
   F09: the transfer write path's currency-match check is race-free only
@@ -92,10 +78,10 @@ concerns.
 Integration test (H2) persists an account and asserts a direct
 `UPDATE account SET balance = -1 WHERE account_type = 'CUSTOMER'` is
 rejected by the database — the CHECK constraints are portable, so this
-genuinely exercises the same rule that runs in production. Also verified
-manually against real Postgres (`docker compose up -d && ./gradlew
-bootRun`, then the same `UPDATE` via `psql`): Flyway migrates cleanly,
-Hibernate's schema validation passes, and the constraint fires there too.
+genuinely exercises the same rule that runs in production. Expect some
+`ddl-auto: validate` friction on `CHAR(3)`/`UUID` column mapping between
+Hibernate's dialect assumptions and H2; resolve with explicit
+`columnDefinition` on the entity rather than by relaxing validation.
 
 ## Review focus
 
