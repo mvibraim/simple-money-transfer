@@ -95,6 +95,13 @@ class AccountApiIT extends AbstractIntegrationTest {
 	}
 
 	@Test
+	void malformedAccountIdReturns400() throws Exception {
+		mockMvc.perform(get("/api/v1/accounts/not-a-uuid")
+						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void missingApiKeyIsRejectedOnEveryEndpoint() throws Exception {
 		mockMvc.perform(post("/api/v1/accounts")
 						.contentType(MediaType.APPLICATION_JSON)

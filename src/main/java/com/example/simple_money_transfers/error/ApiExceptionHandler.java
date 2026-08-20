@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.example.simple_money_transfers.money.InvalidMoneyException;
 
@@ -50,6 +51,12 @@ public class ApiExceptionHandler {
 	public ProblemDetail handleMissingHeader(MissingRequestHeaderException ex) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
 				"Missing required header: " + ex.getHeaderName());
+  }
+  
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+				"Malformed value for parameter '" + ex.getName() + "'");
 	}
 
 	@ExceptionHandler(Exception.class)
