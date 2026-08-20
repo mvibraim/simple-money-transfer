@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/mvibraim/.codex/**)",
+      "Read(//home/mvibraim/**)",
+      "Bash(java -version)",
+      "Bash(timeout 500 ./gradlew test --offline --console=plain)",
+      "Bash(timeout 300 ./gradlew dependencies --configuration testRuntimeClasspath --offline --console=plain)"
+    ]
+  }
+}
