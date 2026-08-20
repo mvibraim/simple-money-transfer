@@ -7,12 +7,19 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.example.simple_money_transfers.money.InvalidMoneyException;
+
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
 	@ExceptionHandler(NotFoundException.class)
 	public ProblemDetail handleNotFound(NotFoundException ex) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
+
+	@ExceptionHandler(InvalidMoneyException.class)
+	public ProblemDetail handleInvalidMoney(InvalidMoneyException ex) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
 	}
 
 	@ExceptionHandler(BusinessRuleException.class)
