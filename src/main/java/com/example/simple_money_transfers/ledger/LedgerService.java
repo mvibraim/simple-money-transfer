@@ -1,0 +1,32 @@
+package com.example.simple_money_transfers.ledger;
+
+import java.util.UUID;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.example.simple_money_transfers.account.AccountRepository;
+import com.example.simple_money_transfers.error.NotFoundException;
+
+@Service
+public class LedgerService {
+
+	private final AccountRepository accountRepository;
+	private final LedgerEntryRepository ledgerEntryRepository;
+
+	public LedgerService(AccountRepository accountRepository, LedgerEntryRepository ledgerEntryRepository) {
+		this.accountRepository = accountRepository;
+		this.ledgerEntryRepository = ledgerEntryRepository;
+	}
+
+	@Transactional(readOnly = true)
+	public Page<LedgerEntry> getHistory(UUID accountId, Pageable pageable) {
+		if (!accountRepository.existsById(accountId)) {
+			throw new NotFoundException("Account %s not found".formatted(accountId));
+		}
+		return ledgerEntryRepository.findByAccountId(accountId, pageable);
+	}
+
+}

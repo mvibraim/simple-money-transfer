@@ -41,7 +41,7 @@ class LedgerEntryRepositoryIT extends AbstractIntegrationTest {
 		var methodNames = Arrays.stream(LedgerEntryRepository.class.getMethods())
 				.map(Method::getName)
 				.toList();
-		assertThat(methodNames).containsExactlyInAnyOrder("save", "findById");
+		assertThat(methodNames).containsExactlyInAnyOrder("save", "findById", "findByAccountId");
 	}
 
 	@Test
