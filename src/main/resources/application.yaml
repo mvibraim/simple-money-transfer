@@ -1,6 +1,11 @@
 spring:
   application:
     name: simple-money-transfers
+  datasource:
+    # No defaults: a missing secret must fail startup, not run silently.
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
