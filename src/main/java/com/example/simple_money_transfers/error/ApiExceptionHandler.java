@@ -55,7 +55,7 @@ public class ApiExceptionHandler {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
 				"Missing required header: " + ex.getHeaderName());
   }
-  
+
 	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
 	public ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
