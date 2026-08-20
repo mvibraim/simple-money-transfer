@@ -1,4 +1,4 @@
-# F01 — H2 foundation (green build)
+# F01 — Postgres foundation (green build)
 
 **Branch:** `feat/01-postgres-foundation` · **Depends on:** F00
 
