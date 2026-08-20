@@ -12,3 +12,18 @@ spring:
     open-in-view: false
   flyway:
     clean-disabled: true
+
+app:
+  security:
+    api-keys:
+      - id: ${API_CLIENT_ID}
+        key: ${API_KEY}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never

@@ -9,3 +9,18 @@ spring:
     open-in-view: false
   flyway:
     clean-disabled: true
+
+app:
+  security:
+    api-keys:
+      - id: test-client
+        key: test-api-key-that-is-at-least-32-characters-long
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never

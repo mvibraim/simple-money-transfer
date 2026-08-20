@@ -7,11 +7,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+// This slice exists to test the error contract, not auth — Spring Security's
+// filters (CSRF in particular) would otherwise reject these POSTs before they
+// ever reach ProbeController. Auth itself is covered by ApiKeyAuthIT.
 @WebMvcTest(controllers = ProbeController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class ApiExceptionHandlerTest {
 
 	@Autowired
