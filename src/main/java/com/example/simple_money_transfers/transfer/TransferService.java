@@ -91,6 +91,12 @@ public class TransferService {
 		return transfer;
 	}
 
+	@Transactional(readOnly = true)
+	public Transfer getTransfer(UUID id) {
+		return transferRepository.findById(id)
+				.orElseThrow(() -> new NotFoundException("Transfer %s not found".formatted(id)));
+	}
+
 	private static Account accountById(List<Account> accounts, UUID id) {
 		return accounts.stream()
 				.filter(account -> account.getId().equals(id))
