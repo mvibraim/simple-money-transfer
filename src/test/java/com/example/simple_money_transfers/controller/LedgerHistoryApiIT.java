@@ -72,25 +72,121 @@ class LedgerHistoryApiIT extends AbstractIntegrationTest {
 		// account now has 3 ledger entries: +100 (deposit credit), -10, -5
 
 		Set<Long> seenIds = new HashSet<>();
-		int page = 0;
-		int totalPages;
-		do {
-			MvcResult result = mockMvc
-				.perform(get("/api/v1/accounts/" + account.getId() + "/entries").param("page", String.valueOf(page))
-					.param("size", "2")
-					.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
-				.andExpect(status().isOk())
-				.andReturn();
+		String cursor = null;
+		boolean hasMore = true;
+		int iterations = 0;
+		while (hasMore) {
+			assertThat(iterations++).as("paging should terminate well before this many iterations").isLessThan(10);
+
+			var requestBuilder = get("/api/v1/accounts/" + account.getId() + "/entries").param("limit", "2")
+				.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY);
+			if (cursor != null) {
+				requestBuilder.param("cursor", cursor);
+			}
+
+			MvcResult result = mockMvc.perform(requestBuilder).andExpect(status().isOk()).andReturn();
 
 			JsonNode body = jsonMapper.readTree(result.getResponse().getContentAsString());
 			body.path("entries").forEach(entry -> seenIds.add(entry.path("id").asLong()));
-			totalPages = body.path("totalPages").asInt();
-			assertThat(body.path("totalElements").asLong()).isEqualTo(3);
-			page++;
+			hasMore = body.path("hasMore").asBoolean();
+			cursor = hasMore ? body.path("nextCursor").asString() : null;
 		}
-		while (page < totalPages);
 
 		assertThat(seenIds).hasSize(3);
+	}
+
+	@Test
+	void lastPageReportsNoMoreAndNoCursor() throws Exception {
+		Account account = accountRepository
+			.save(new Account("H5", "History", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+
+		transferService.deposit(account.getId(), new BigDecimal("10.00"), null);
+
+		mockMvc
+			.perform(get("/api/v1/accounts/" + account.getId() + "/entries").header(ApiKeyAuthFilter.HEADER_NAME,
+					VALID_KEY))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.hasMore").value(false))
+			.andExpect(jsonPath("$.nextCursor").value(org.hamcrest.Matchers.nullValue()));
+	}
+
+	@Test
+	void malformedCursorReturns400() throws Exception {
+		Account account = accountRepository
+			.save(new Account("H6", "History", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+
+		mockMvc
+			.perform(get("/api/v1/accounts/" + account.getId() + "/entries").param("cursor", "not-a-real-cursor")
+				.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
+			.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void limitBelowMinimumReturns400() throws Exception {
+		Account account = accountRepository
+			.save(new Account("H7", "History", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+
+		mockMvc
+			.perform(get("/api/v1/accounts/" + account.getId() + "/entries").param("limit", "0")
+				.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
+			.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void limitAboveMaximumReturns400() throws Exception {
+		Account account = accountRepository
+			.save(new Account("H8", "History", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+
+		mockMvc
+			.perform(get("/api/v1/accounts/" + account.getId() + "/entries").param("limit", "101")
+				.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
+			.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void pagingIsStableAcrossAConcurrentInsertBetweenRequests() throws Exception {
+		Account account = accountRepository
+			.save(new Account("H9", "History", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+
+		// Three entries exist before the client starts paging.
+		transferService.deposit(account.getId(), new BigDecimal("1.00"), null);
+		transferService.deposit(account.getId(), new BigDecimal("2.00"), null);
+		transferService.deposit(account.getId(), new BigDecimal("3.00"), null);
+
+		MvcResult firstPageResult = mockMvc
+			.perform(get("/api/v1/accounts/" + account.getId() + "/entries").param("limit", "1")
+				.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
+			.andExpect(status().isOk())
+			.andReturn();
+		JsonNode firstPage = jsonMapper.readTree(firstPageResult.getResponse().getContentAsString());
+		long firstPageId = firstPage.path("entries").get(0).path("id").asLong();
+		String cursor = firstPage.path("nextCursor").asString();
+
+		// A fourth entry lands above the cursor while the client is still
+		// mid-walk - an offset-based page 2 would now be shifted by this
+		// insert (skipping or duplicating a row); a cursor-based page 2 must
+		// not be.
+		transferService.deposit(account.getId(), new BigDecimal("4.00"), null);
+		long fourthEntryId = jdbcClient.sql("SELECT id FROM ledger_entry WHERE account_id = ? ORDER BY id DESC LIMIT 1")
+			.param(account.getId())
+			.query(Long.class)
+			.single();
+
+		MvcResult secondPageResult = mockMvc
+			.perform(get("/api/v1/accounts/" + account.getId() + "/entries").param("limit", "10")
+				.param("cursor", cursor)
+				.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
+			.andExpect(status().isOk())
+			.andReturn();
+		JsonNode secondPage = jsonMapper.readTree(secondPageResult.getResponse().getContentAsString());
+
+		Set<Long> secondPageIds = new HashSet<>();
+		secondPage.path("entries").forEach(entry -> secondPageIds.add(entry.path("id").asLong()));
+
+		// Exactly the two entries that existed below the cursor before the
+		// concurrent insert - no duplicate of the first page's row, and no
+		// leak of the newly-inserted row above it.
+		assertThat(secondPageIds).hasSize(2).doesNotContain(firstPageId, fourthEntryId);
 	}
 
 	@Test

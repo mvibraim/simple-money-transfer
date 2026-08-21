@@ -66,6 +66,23 @@ class ApiExceptionHandlerTest {
 	}
 
 	@Test
+	void invalidCursorExceptionMapsTo400() throws Exception {
+		mockMvc.perform(post("/probe/invalid-cursor"))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.detail").value("Malformed cursor: not-a-real-cursor"));
+	}
+
+	@Test
+	void parameterValidationFailureMapsTo400() throws Exception {
+		mockMvc.perform(get("/probe/param-validated").param("limit", "101"))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.status").value(400))
+			.andExpect(jsonPath("$.errors[0]").value(org.hamcrest.Matchers.containsString("limit")));
+	}
+
+	@Test
 	void unexpectedExceptionMapsTo500WithNoLeakedDetail() throws Exception {
 		mockMvc.perform(post("/probe/boom"))
 			.andExpect(status().isInternalServerError())

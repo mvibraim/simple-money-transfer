@@ -1,9 +1,9 @@
 package com.example.simple_money_transfers.service;
 
+import java.util.List;
 import java.util.UUID;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,12 +24,24 @@ public class LedgerService {
 		this.ledgerEntryRepository = ledgerEntryRepository;
 	}
 
+	/**
+	 * Fetches {@code limit + 1} rows so the extra row tells us whether another page
+	 * exists, without a separate count query - then drops it before returning.
+	 */
 	@Transactional(readOnly = true)
-	public Page<LedgerEntry> getHistory(UUID accountId, Pageable pageable) {
+	public LedgerHistoryPage getHistory(UUID accountId, Long cursorId, int limit) {
 		if (!accountRepository.existsById(accountId)) {
 			throw new NotFoundException("Account %s not found".formatted(accountId));
 		}
-		return ledgerEntryRepository.findByAccountId(accountId, pageable);
+		Limit fetchLimit = Limit.of(limit + 1);
+		List<LedgerEntry> fetched = (cursorId == null)
+				? ledgerEntryRepository.findByAccountIdOrderByIdDesc(accountId, fetchLimit)
+				: ledgerEntryRepository.findByAccountIdAndIdLessThanOrderByIdDesc(accountId, cursorId, fetchLimit);
+
+		boolean hasMore = fetched.size() > limit;
+		List<LedgerEntry> page = hasMore ? fetched.subList(0, limit) : fetched;
+		Long nextCursorId = hasMore ? page.get(page.size() - 1).getId() : null;
+		return new LedgerHistoryPage(page, nextCursorId, hasMore);
 	}
 
 }

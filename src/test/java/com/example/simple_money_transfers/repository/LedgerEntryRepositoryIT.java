@@ -6,11 +6,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Limit;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.example.simple_money_transfers.model.entity.Account;
@@ -39,7 +41,8 @@ class LedgerEntryRepositoryIT extends AbstractIntegrationTest {
 	@Test
 	void repositoryExposesNoUpdateOrDeleteMethod() {
 		var methodNames = Arrays.stream(LedgerEntryRepository.class.getMethods()).map(Method::getName).toList();
-		assertThat(methodNames).containsExactlyInAnyOrder("save", "findById", "findByAccountId");
+		assertThat(methodNames).containsExactlyInAnyOrder("save", "findById", "findByAccountIdOrderByIdDesc",
+				"findByAccountIdAndIdLessThanOrderByIdDesc");
 	}
 
 	@Test
@@ -93,6 +96,40 @@ class LedgerEntryRepositoryIT extends AbstractIntegrationTest {
 		assertThat(reloaded.getAmount()).isEqualByComparingTo("10.0000");
 		assertThat(reloaded.getBalanceAfter()).isEqualByComparingTo("10.0000");
 		assertThat(reloaded.getCreatedAt()).isNotNull();
+	}
+
+	@Test
+	void cursorQueryReturnsOnlyEntriesOlderThanTheCursorNewestFirstCappedAtTheLimit() {
+		Account source = accountRepository
+			.save(new Account("REF-S4", "Source", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+		Account target = accountRepository
+			.save(new Account("REF-T4", "Target", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+
+		LedgerEntry first = null;
+		LedgerEntry second = null;
+		LedgerEntry third = null;
+		for (int i = 0; i < 3; i++) {
+			Transfer transfer = transferRepository.save(new Transfer(source.getId(), target.getId(),
+					new BigDecimal("1.0000"), "USD", TransferKind.TRANSFER, null));
+			LedgerEntry entry = ledgerEntryRepository.save(new LedgerEntry(transfer.getId(), source.getId(),
+					Direction.DEBIT, new BigDecimal("-1.0000"), "USD", new BigDecimal("-1.0000")));
+			if (i == 0) {
+				first = entry;
+			}
+			else if (i == 1) {
+				second = entry;
+			}
+			else {
+				third = entry;
+			}
+		}
+
+		List<LedgerEntry> firstPage = ledgerEntryRepository.findByAccountIdOrderByIdDesc(source.getId(), Limit.of(2));
+		assertThat(firstPage).extracting(LedgerEntry::getId).containsExactly(third.getId(), second.getId());
+
+		List<LedgerEntry> nextPage = ledgerEntryRepository.findByAccountIdAndIdLessThanOrderByIdDesc(source.getId(),
+				second.getId(), Limit.of(2));
+		assertThat(nextPage).extracting(LedgerEntry::getId).containsExactly(first.getId());
 	}
 
 	@Test

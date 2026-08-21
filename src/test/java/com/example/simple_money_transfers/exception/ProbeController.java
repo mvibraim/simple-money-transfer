@@ -3,12 +3,14 @@ package com.example.simple_money_transfers.exception;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -41,6 +43,16 @@ class ProbeController {
 
 	@GetMapping("/type-mismatch/{id}")
 	String typeMismatch(@PathVariable UUID id) {
+		return "ok";
+	}
+
+	@PostMapping("/invalid-cursor")
+	String invalidCursor() {
+		throw new InvalidCursorException("not-a-real-cursor");
+	}
+
+	@GetMapping("/param-validated")
+	String paramValidated(@RequestParam @Max(100) int limit) {
 		return "ok";
 	}
 

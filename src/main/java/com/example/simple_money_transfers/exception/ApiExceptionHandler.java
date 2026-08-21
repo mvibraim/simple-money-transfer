@@ -14,6 +14,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
@@ -40,6 +41,11 @@ public class ApiExceptionHandler {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
 	}
 
+	@ExceptionHandler(InvalidCursorException.class)
+	public ProblemDetail handleInvalidCursor(InvalidCursorException ex) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+	}
+
 	@ExceptionHandler(BusinessRuleException.class)
 	public ProblemDetail handleBusinessRule(BusinessRuleException ex) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
@@ -53,6 +59,29 @@ public class ApiExceptionHandler {
 					.stream()
 					.map(error -> error.getField() + ": " + error.getDefaultMessage())
 					.toList());
+		return problem;
+	}
+
+	/**
+	 * Since Framework 6.1, constraints directly on a {@code @RequestParam}/
+	 * {@code @PathVariable} (e.g. the ledger history endpoint's {@code @Min}/{@code @Max}
+	 * on {@code limit}) are validated by {@code RequestMappingHandlerAdapter} itself and
+	 * throw this - no {@code @Validated} on the controller needed, and none should be
+	 * added: that instead triggers the older AOP-based
+	 * {@code MethodValidationInterceptor}, which throws an unmapped
+	 * {@link jakarta.validation.ConstraintViolationException} instead of this one.
+	 * Without this handler, a constraint violation falls through to the catch-all below
+	 * and returns 500 instead of 400.
+	 */
+	@ExceptionHandler(HandlerMethodValidationException.class)
+	public ProblemDetail handleParameterValidation(HandlerMethodValidationException ex) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
+		problem.setProperty("errors", ex.getParameterValidationResults()
+			.stream()
+			.flatMap(result -> result.getResolvableErrors()
+				.stream()
+				.map(error -> result.getMethodParameter().getParameterName() + ": " + error.getDefaultMessage()))
+			.toList());
 		return problem;
 	}
 
