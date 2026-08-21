@@ -1,4 +1,39 @@
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: simple-money-transfers:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # postgres, not localhost: inside the compose network the app
+      # reaches the database container by its service name, unlike
+      # bootRun on the host (.env.example), which uses localhost via
+      # Postgres's published port.
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/${POSTGRES_DB:-money}"
+      SPRING_DATASOURCE_USERNAME: money_app
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?SPRING_DATASOURCE_PASSWORD must be set — copy .env.example to .env and fill it in}
+      SPRING_FLYWAY_USER: ${SPRING_FLYWAY_USER:?SPRING_FLYWAY_USER must be set}
+      SPRING_FLYWAY_PASSWORD: ${SPRING_FLYWAY_PASSWORD:?SPRING_FLYWAY_PASSWORD must be set}
+      API_CLIENT_ID: ${API_CLIENT_ID:?API_CLIENT_ID must be set}
+      API_KEY: ${API_KEY:?API_KEY must be set}
+    ports:
+      - "8080:8080"
+    # Longer than Boot 4.1.1's default 30s graceful-shutdown drain
+    # (server.shutdown=graceful) - otherwise Docker SIGKILLs in-flight
+    # transfers mid-drain on every `compose down`/`compose stop`.
+    stop_grace_period: 40s
+    healthcheck:
+      # /actuator/health needs no X-API-Key (SecurityConfig permits it
+      # explicitly) - only the exact path, not /actuator/health/**.
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
   postgres:
     image: postgres:18-alpine
     environment:

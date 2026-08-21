@@ -19,9 +19,15 @@ cp .env.example .env
 # SPRING_DATASOURCE_PASSWORD (a different value, for the app's own
 # restricted database role), and API_KEY (32+ characters).
 
-./gradlew bootBuildImage          # builds simple-money-transfers:latest
-docker compose -f compose.yaml -f compose.app.yaml up
+docker compose up
 ```
+
+The first run builds the app image from the `Dockerfile` (multi-stage:
+Gradle/JDK 25 to compile, then a JRE-25-only runtime layer); later runs
+reuse it unless you pass `--build` after changing source or
+dependencies. The build includes a Java 25 AOT cache training run, so
+the first build is slower than a plain compile - every subsequent
+container start is faster for it.
 
 The app listens on `localhost:8080`. Every endpoint except
 `/actuator/health` requires an `X-API-Key` header matching the `API_KEY`
@@ -43,9 +49,9 @@ deliberate API change.
 
 ### Just the database
 
-`docker compose up -d` (no `-f` flags) starts Postgres only - the loop for
-running the app directly with `./gradlew bootRun` while developing, rather
-than the fully packaged container.
+`docker compose up postgres -d` starts Postgres only - the loop for
+running the app directly with `./gradlew bootRun` while developing,
+rather than the fully packaged container.
 
 ## Smoke test
 

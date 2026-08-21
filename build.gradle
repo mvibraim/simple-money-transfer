@@ -62,7 +62,8 @@ tasks.named('jacocoTestReport') {
 
 tasks.named('bootBuildImage') {
 	// Fixed name/tag, not the default group/name/version-derived one, so
-	// compose.app.yaml can reference it predictably.
+	// it lines up with the tag compose.yaml's app service builds under
+	// via Dockerfile - either build path produces an image compose can run.
 	imageName = 'simple-money-transfers:latest'
 }
 
