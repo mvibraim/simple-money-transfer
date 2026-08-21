@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
+
 import org.junit.jupiter.api.Test;
 
 class MoneyNormalizerTest {
@@ -24,15 +25,15 @@ class MoneyNormalizerTest {
 	@Test
 	void rejectsAnAmountFinerThanTheCurrencyAllows() {
 		assertThatThrownBy(() -> MoneyNormalizer.normalize(new BigDecimal("10.999"), "USD"))
-			.isInstanceOf(InvalidAmountScaleException.class)
-			.hasMessageContaining("USD")
-			.hasMessageContaining("2");
+				.isInstanceOf(InvalidAmountScaleException.class)
+				.hasMessageContaining("USD")
+				.hasMessageContaining("2");
 	}
 
 	@Test
 	void rejectsAnyFractionForAZeroDecimalCurrency() {
 		assertThatThrownBy(() -> MoneyNormalizer.normalize(new BigDecimal("10.5"), "JPY"))
-			.isInstanceOf(InvalidAmountScaleException.class);
+				.isInstanceOf(InvalidAmountScaleException.class);
 	}
 
 	@Test
@@ -44,14 +45,14 @@ class MoneyNormalizerTest {
 	@Test
 	void rejectsAnUnknownCurrencyCode() {
 		assertThatThrownBy(() -> MoneyNormalizer.normalize(new BigDecimal("10.00"), "XXX_NOT_REAL"))
-			.isInstanceOf(InvalidCurrencyException.class)
-			.hasMessageContaining("XXX_NOT_REAL");
+				.isInstanceOf(InvalidCurrencyException.class)
+				.hasMessageContaining("XXX_NOT_REAL");
 	}
 
 	@Test
 	void requireValidCurrencyRejectsLowercaseNonMatchingCode() {
 		assertThatThrownBy(() -> MoneyNormalizer.requireValidCurrency("nope"))
-			.isInstanceOf(InvalidCurrencyException.class);
+				.isInstanceOf(InvalidCurrencyException.class);
 	}
 
 	@Test

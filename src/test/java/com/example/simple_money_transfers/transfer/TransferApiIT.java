@@ -5,15 +5,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.simple_money_transfers.account.Account;
-import com.example.simple_money_transfers.account.AccountRepository;
-import com.example.simple_money_transfers.account.AccountStatus;
-import com.example.simple_money_transfers.account.AccountType;
-import com.example.simple_money_transfers.config.ApiKeyAuthFilter;
-import com.example.simple_money_transfers.support.AbstractIntegrationTest;
-import com.example.simple_money_transfers.support.LedgerInvariants;
 import java.math.BigDecimal;
 import java.util.UUID;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +16,15 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+
+import com.example.simple_money_transfers.account.Account;
+import com.example.simple_money_transfers.account.AccountRepository;
+import com.example.simple_money_transfers.account.AccountStatus;
+import com.example.simple_money_transfers.account.AccountType;
+import com.example.simple_money_transfers.config.ApiKeyAuthFilter;
+import com.example.simple_money_transfers.support.AbstractIntegrationTest;
+import com.example.simple_money_transfers.support.LedgerInvariants;
+
 import tools.jackson.databind.json.JsonMapper;
 
 @AutoConfigureMockMvc
@@ -50,8 +53,8 @@ class TransferApiIT extends AbstractIntegrationTest {
 	}
 
 	private Account fundedAccount(String ref, BigDecimal balance, String currency) {
-		Account account = accountRepository
-			.save(new Account(ref, "Holder " + ref, AccountType.CUSTOMER, currency, AccountStatus.ACTIVE));
+		Account account = accountRepository.save(
+				new Account(ref, "Holder " + ref, AccountType.CUSTOMER, currency, AccountStatus.ACTIVE));
 		if (balance.signum() > 0) {
 			transferService.deposit(account.getId(), balance, null);
 		}
@@ -67,24 +70,25 @@ class TransferApiIT extends AbstractIntegrationTest {
 		Account source = fundedAccount("S1", new BigDecimal("100.00"), "USD");
 		Account target = fundedAccount("T1", new BigDecimal("0.00"), "USD");
 
-		MvcResult created = mockMvc.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-			.header("Idempotency-Key", freshIdempotencyKey())
-			.contentType(MediaType.APPLICATION_JSON)
-			.content("""
-					{"sourceAccountId":"%s","targetAccountId":"%s","amount":"25.00","currency":"USD","reference":"rent"}
-					""".formatted(source.getId(), target.getId())))
-			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.amount").value("25.0000"))
-			.andExpect(jsonPath("$.currency").value("USD"))
-			.andExpect(jsonPath("$.kind").value("TRANSFER"))
-			.andExpect(jsonPath("$.reference").value("rent"))
-			.andReturn();
+		MvcResult created = mockMvc.perform(post("/api/v1/transfers")
+						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", freshIdempotencyKey())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"sourceAccountId":"%s","targetAccountId":"%s","amount":"25.00","currency":"USD","reference":"rent"}
+								""".formatted(source.getId(), target.getId())))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.amount").value("25.0000"))
+				.andExpect(jsonPath("$.currency").value("USD"))
+				.andExpect(jsonPath("$.kind").value("TRANSFER"))
+				.andExpect(jsonPath("$.reference").value("rent"))
+				.andReturn();
 
 		String id = jsonMapper.readTree(created.getResponse().getContentAsString()).path("id").asString();
 
 		mockMvc.perform(get("/api/v1/transfers/" + id).header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
-			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.id").value(id));
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(id));
 	}
 
 	@Test
@@ -92,15 +96,15 @@ class TransferApiIT extends AbstractIntegrationTest {
 		Account source = fundedAccount("S2", new BigDecimal("10.00"), "USD");
 		Account target = fundedAccount("T2", new BigDecimal("0.00"), "USD");
 
-		mockMvc
-			.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-				.header("Idempotency-Key", freshIdempotencyKey())
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{"sourceAccountId":"%s","targetAccountId":"%s","amount":"30.00","currency":"USD"}
-						""".formatted(source.getId(), target.getId())))
-			.andExpect(status().isUnprocessableContent())
-			.andExpect(jsonPath("$.status").value(422));
+		mockMvc.perform(post("/api/v1/transfers")
+						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", freshIdempotencyKey())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"sourceAccountId":"%s","targetAccountId":"%s","amount":"30.00","currency":"USD"}
+								""".formatted(source.getId(), target.getId())))
+				.andExpect(status().isUnprocessableContent())
+				.andExpect(jsonPath("$.status").value(422));
 	}
 
 	@Test
@@ -108,58 +112,59 @@ class TransferApiIT extends AbstractIntegrationTest {
 		Account source = fundedAccount("S3", new BigDecimal("100.00"), "USD");
 		Account target = fundedAccount("T3", new BigDecimal("0.00"), "EUR");
 
-		mockMvc
-			.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-				.header("Idempotency-Key", freshIdempotencyKey())
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{"sourceAccountId":"%s","targetAccountId":"%s","amount":"10.00","currency":"USD"}
-						""".formatted(source.getId(), target.getId())))
-			.andExpect(status().isUnprocessableContent());
+		mockMvc.perform(post("/api/v1/transfers")
+						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", freshIdempotencyKey())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"sourceAccountId":"%s","targetAccountId":"%s","amount":"10.00","currency":"USD"}
+								""".formatted(source.getId(), target.getId())))
+				.andExpect(status().isUnprocessableContent());
 	}
 
 	@Test
 	void selfTransferMapsTo422() throws Exception {
 		Account account = fundedAccount("S4", new BigDecimal("100.00"), "USD");
 
-		mockMvc
-			.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-				.header("Idempotency-Key", freshIdempotencyKey())
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{"sourceAccountId":"%s","targetAccountId":"%s","amount":"10.00","currency":"USD"}
-						""".formatted(account.getId(), account.getId())))
-			.andExpect(status().isUnprocessableContent());
+		mockMvc.perform(post("/api/v1/transfers")
+						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", freshIdempotencyKey())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"sourceAccountId":"%s","targetAccountId":"%s","amount":"10.00","currency":"USD"}
+								""".formatted(account.getId(), account.getId())))
+				.andExpect(status().isUnprocessableContent());
 	}
 
 	@Test
 	void unknownAccountMapsTo404() throws Exception {
 		Account source = fundedAccount("S5", new BigDecimal("100.00"), "USD");
 
-		mockMvc
-			.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-				.header("Idempotency-Key", freshIdempotencyKey())
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{"sourceAccountId":"%s","targetAccountId":"%s","amount":"10.00","currency":"USD"}
-						""".formatted(source.getId(), UUID.randomUUID())))
-			.andExpect(status().isNotFound());
+		mockMvc.perform(post("/api/v1/transfers")
+						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", freshIdempotencyKey())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"sourceAccountId":"%s","targetAccountId":"%s","amount":"10.00","currency":"USD"}
+								""".formatted(source.getId(), UUID.randomUUID())))
+				.andExpect(status().isNotFound());
 	}
 
 	@Test
 	void unknownTransferIdReturns404() throws Exception {
-		mockMvc.perform(get("/api/v1/transfers/" + UUID.randomUUID()).header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
-			.andExpect(status().isNotFound());
+		mockMvc.perform(get("/api/v1/transfers/" + UUID.randomUUID())
+						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
+				.andExpect(status().isNotFound());
 	}
 
 	@Test
 	void missingFieldsAreRejectedWith400() throws Exception {
-		mockMvc
-			.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-				.header("Idempotency-Key", freshIdempotencyKey())
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("{}"))
-			.andExpect(status().isBadRequest());
+		mockMvc.perform(post("/api/v1/transfers")
+						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", freshIdempotencyKey())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{}"))
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test
@@ -167,19 +172,21 @@ class TransferApiIT extends AbstractIntegrationTest {
 		Account source = fundedAccount("S6", new BigDecimal("100.00"), "USD");
 		Account target = fundedAccount("T6", new BigDecimal("0.00"), "USD");
 
-		mockMvc
-			.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{"sourceAccountId":"%s","targetAccountId":"%s","amount":"10.00","currency":"USD"}
-						""".formatted(source.getId(), target.getId())))
-			.andExpect(status().isBadRequest());
+		mockMvc.perform(post("/api/v1/transfers")
+						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"sourceAccountId":"%s","targetAccountId":"%s","amount":"10.00","currency":"USD"}
+								""".formatted(source.getId(), target.getId())))
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test
 	void missingApiKeyIsRejected() throws Exception {
-		mockMvc.perform(post("/api/v1/transfers").contentType(MediaType.APPLICATION_JSON).content("{}"))
-			.andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/v1/transfers")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{}"))
+				.andExpect(status().isUnauthorized());
 	}
 
 }

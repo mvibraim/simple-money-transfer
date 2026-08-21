@@ -1,5 +1,9 @@
 package com.example.simple_money_transfers.transfer;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -8,9 +12,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
@@ -48,8 +49,8 @@ public class Transfer {
 		// JPA
 	}
 
-	public Transfer(UUID sourceAccountId, UUID targetAccountId, BigDecimal amount, String currency, TransferKind kind,
-			String reference) {
+	public Transfer(UUID sourceAccountId, UUID targetAccountId, BigDecimal amount, String currency,
+			TransferKind kind, String reference) {
 		this.sourceAccountId = sourceAccountId;
 		this.targetAccountId = targetAccountId;
 		this.amount = amount;

@@ -1,5 +1,8 @@
 package com.example.simple_money_transfers.idempotency;
 
+import java.time.Instant;
+import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -7,19 +10,17 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.Instant;
-import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 
 /**
- * Stores only successful outcomes - {@code transfer_id} is {@code NOT NULL} at the
- * database level, so a record without a transfer would be a contradiction. Immutable by
- * construction: no setters, and {@link IdempotencyRecordRepository} exposes no update or
- * delete method.
+ * Stores only successful outcomes - {@code transfer_id} is {@code NOT
+ * NULL} at the database level, so a record without a transfer would be a
+ * contradiction. Immutable by construction: no setters, and {@link
+ * IdempotencyRecordRepository} exposes no update or delete method.
  */
 @Entity
 @Table(name = "idempotency_record",
-		uniqueConstraints = @UniqueConstraint(columnNames = { "client_id", "idempotency_key" }))
+		uniqueConstraints = @UniqueConstraint(columnNames = {"client_id", "idempotency_key"}))
 public class IdempotencyRecord {
 
 	@Id

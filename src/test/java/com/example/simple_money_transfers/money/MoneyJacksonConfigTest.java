@@ -3,12 +3,15 @@ package com.example.simple_money_transfers.money;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+
 import org.junit.jupiter.api.Test;
+
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Constructs the {@link JsonMapper} directly, applying the same customizer Spring would
- * wire as a bean, so this stays a pure unit test with no Spring context.
+ * Constructs the {@link JsonMapper} directly, applying the same customizer
+ * Spring would wire as a bean, so this stays a pure unit test with no
+ * Spring context.
  */
 class MoneyJacksonConfigTest {
 

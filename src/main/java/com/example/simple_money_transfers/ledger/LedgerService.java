@@ -1,18 +1,19 @@
 package com.example.simple_money_transfers.ledger;
 
-import com.example.simple_money_transfers.account.AccountRepository;
-import com.example.simple_money_transfers.error.NotFoundException;
 import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.simple_money_transfers.account.AccountRepository;
+import com.example.simple_money_transfers.error.NotFoundException;
+
 @Service
 public class LedgerService {
 
 	private final AccountRepository accountRepository;
-
 	private final LedgerEntryRepository ledgerEntryRepository;
 
 	public LedgerService(AccountRepository accountRepository, LedgerEntryRepository ledgerEntryRepository) {

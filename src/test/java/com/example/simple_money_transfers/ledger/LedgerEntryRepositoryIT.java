@@ -3,6 +3,16 @@ package com.example.simple_money_transfers.ledger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+
 import com.example.simple_money_transfers.account.Account;
 import com.example.simple_money_transfers.account.AccountRepository;
 import com.example.simple_money_transfers.account.AccountStatus;
@@ -11,13 +21,6 @@ import com.example.simple_money_transfers.support.AbstractIntegrationTest;
 import com.example.simple_money_transfers.transfer.Transfer;
 import com.example.simple_money_transfers.transfer.TransferKind;
 import com.example.simple_money_transfers.transfer.TransferRepository;
-import java.lang.reflect.Method;
-import java.math.BigDecimal;
-import java.util.Arrays;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 class LedgerEntryRepositoryIT extends AbstractIntegrationTest {
 
@@ -35,55 +38,52 @@ class LedgerEntryRepositoryIT extends AbstractIntegrationTest {
 
 	@Test
 	void repositoryExposesNoUpdateOrDeleteMethod() {
-		var methodNames = Arrays.stream(LedgerEntryRepository.class.getMethods()).map(Method::getName).toList();
+		var methodNames = Arrays.stream(LedgerEntryRepository.class.getMethods())
+				.map(Method::getName)
+				.toList();
 		assertThat(methodNames).containsExactlyInAnyOrder("save", "findById", "findByAccountId");
 	}
 
 	@Test
 	void databaseRejectsASecondEntryForTheSameTransferAndAccount() {
-		Account source = accountRepository
-			.save(new Account("REF-S", "Source", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
-		Account target = accountRepository
-			.save(new Account("REF-T", "Target", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
-		Transfer transfer = transferRepository.save(new Transfer(source.getId(), target.getId(),
-				new BigDecimal("10.0000"), "USD", TransferKind.TRANSFER, null));
+		Account source = accountRepository.save(new Account("REF-S", "Source", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+		Account target = accountRepository.save(new Account("REF-T", "Target", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+		Transfer transfer = transferRepository.save(
+				new Transfer(source.getId(), target.getId(), new BigDecimal("10.0000"), "USD", TransferKind.TRANSFER, null));
 		accountRepository.flush();
 
-		ledgerEntryRepository.save(new LedgerEntry(transfer.getId(), source.getId(), Direction.DEBIT,
-				new BigDecimal("-10.0000"), "USD", new BigDecimal("-10.0000")));
+		ledgerEntryRepository.save(new LedgerEntry(
+				transfer.getId(), source.getId(), Direction.DEBIT, new BigDecimal("-10.0000"), "USD", new BigDecimal("-10.0000")));
 
-		assertThatThrownBy(() -> ledgerEntryRepository.save(new LedgerEntry(transfer.getId(), source.getId(),
-				Direction.DEBIT, new BigDecimal("-5.0000"), "USD", new BigDecimal("-15.0000"))))
-			.isInstanceOf(DataAccessException.class);
+		assertThatThrownBy(() -> ledgerEntryRepository.save(new LedgerEntry(
+				transfer.getId(), source.getId(), Direction.DEBIT, new BigDecimal("-5.0000"), "USD", new BigDecimal("-15.0000"))))
+				.isInstanceOf(DataAccessException.class);
 	}
 
 	@Test
 	void databaseRejectsADebitRecordedAsAPositiveAmount() {
-		Account source = accountRepository
-			.save(new Account("REF-S2", "Source", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
-		Account target = accountRepository
-			.save(new Account("REF-T2", "Target", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
-		Transfer transfer = transferRepository.save(new Transfer(source.getId(), target.getId(),
-				new BigDecimal("10.0000"), "USD", TransferKind.TRANSFER, null));
+		Account source = accountRepository.save(new Account("REF-S2", "Source", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+		Account target = accountRepository.save(new Account("REF-T2", "Target", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+		Transfer transfer = transferRepository.save(
+				new Transfer(source.getId(), target.getId(), new BigDecimal("10.0000"), "USD", TransferKind.TRANSFER, null));
 		accountRepository.flush();
 
-		assertThatThrownBy(() -> jdbcTemplate
-			.update("INSERT INTO ledger_entry (transfer_id, account_id, direction, amount, currency, balance_after) "
-					+ "VALUES (?, ?, 'DEBIT', 10.0000, 'USD', 10.0000)", transfer.getId(), source.getId()))
-			.isInstanceOf(DataAccessException.class);
+		assertThatThrownBy(() -> jdbcTemplate.update(
+				"INSERT INTO ledger_entry (transfer_id, account_id, direction, amount, currency, balance_after) "
+						+ "VALUES (?, ?, 'DEBIT', 10.0000, 'USD', 10.0000)",
+				transfer.getId(), source.getId()))
+				.isInstanceOf(DataAccessException.class);
 	}
 
 	@Test
 	void savesAndReloadsALedgerEntry() {
-		Account source = accountRepository
-			.save(new Account("REF-S3", "Source", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
-		Account target = accountRepository
-			.save(new Account("REF-T3", "Target", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
-		Transfer transfer = transferRepository.save(new Transfer(source.getId(), target.getId(),
-				new BigDecimal("10.0000"), "USD", TransferKind.TRANSFER, null));
+		Account source = accountRepository.save(new Account("REF-S3", "Source", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+		Account target = accountRepository.save(new Account("REF-T3", "Target", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+		Transfer transfer = transferRepository.save(
+				new Transfer(source.getId(), target.getId(), new BigDecimal("10.0000"), "USD", TransferKind.TRANSFER, null));
 
-		LedgerEntry saved = ledgerEntryRepository.save(new LedgerEntry(transfer.getId(), target.getId(),
-				Direction.CREDIT, new BigDecimal("10.0000"), "USD", new BigDecimal("10.0000")));
+		LedgerEntry saved = ledgerEntryRepository.save(new LedgerEntry(
+				transfer.getId(), target.getId(), Direction.CREDIT, new BigDecimal("10.0000"), "USD", new BigDecimal("10.0000")));
 
 		LedgerEntry reloaded = ledgerEntryRepository.findById(saved.getId()).orElseThrow();
 		assertThat(reloaded.getDirection()).isEqualTo(Direction.CREDIT);
@@ -94,7 +94,9 @@ class LedgerEntryRepositoryIT extends AbstractIntegrationTest {
 
 	@Test
 	void transferRepositoryExposesNoUpdateOrDeleteMethod() {
-		var methodNames = Arrays.stream(TransferRepository.class.getMethods()).map(Method::getName).toList();
+		var methodNames = Arrays.stream(TransferRepository.class.getMethods())
+				.map(Method::getName)
+				.toList();
 		assertThat(methodNames).containsExactlyInAnyOrder("save", "findById");
 	}
 

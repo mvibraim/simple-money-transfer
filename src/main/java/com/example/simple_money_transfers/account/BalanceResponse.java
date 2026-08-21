@@ -9,4 +9,5 @@ public record BalanceResponse(UUID accountId, BigDecimal balance, String currenc
 	static BalanceResponse from(Account account) {
 		return new BalanceResponse(account.getId(), account.getBalance(), account.getCurrency(), Instant.now());
 	}
+
 }

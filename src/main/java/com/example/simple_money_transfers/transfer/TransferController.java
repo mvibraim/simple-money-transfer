@@ -1,8 +1,9 @@
 package com.example.simple_money_transfers.transfer;
 
-import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.UUID;
+
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class TransferController {
 
 	private final TransferService transferService;
-
 	private final TransferOrchestrator transferOrchestrator;
 
 	public TransferController(TransferService transferService, TransferOrchestrator transferOrchestrator) {
@@ -26,7 +26,9 @@ public class TransferController {
 	}
 
 	@PostMapping
-	public ResponseEntity<String> create(@RequestHeader("Idempotency-Key") String idempotencyKey, Principal principal,
+	public ResponseEntity<String> create(
+			@RequestHeader("Idempotency-Key") String idempotencyKey,
+			Principal principal,
 			@Valid @RequestBody CreateTransferRequest request) {
 		return transferOrchestrator.transfer(principal.getName(), idempotencyKey, request);
 	}

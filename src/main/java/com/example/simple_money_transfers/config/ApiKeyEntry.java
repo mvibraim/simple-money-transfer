@@ -9,4 +9,5 @@ public record ApiKeyEntry(@NotBlank String id, @NotBlank @Size(min = 32) String 
 	public String toString() {
 		return "ApiKeyEntry[id=%s, key=REDACTED]".formatted(id);
 	}
+
 }

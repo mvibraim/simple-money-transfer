@@ -1,7 +1,8 @@
 package com.example.simple_money_transfers.transfer;
 
-import com.example.simple_money_transfers.error.BusinessRuleException;
 import java.util.UUID;
+
+import com.example.simple_money_transfers.error.BusinessRuleException;
 
 public class InsufficientFundsException extends BusinessRuleException {
 

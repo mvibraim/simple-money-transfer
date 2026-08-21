@@ -1,6 +1,5 @@
 package com.example.simple_money_transfers.error;
 
-import com.example.simple_money_transfers.money.InvalidMoneyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.PessimisticLockingFailureException;
@@ -14,6 +13,8 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import com.example.simple_money_transfers.money.InvalidMoneyException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -38,11 +39,9 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
-		problem.setProperty("errors",
-				ex.getFieldErrors()
-					.stream()
-					.map(error -> error.getField() + ": " + error.getDefaultMessage())
-					.toList());
+		problem.setProperty("errors", ex.getFieldErrors().stream()
+				.map(error -> error.getField() + ": " + error.getDefaultMessage())
+				.toList());
 		return problem;
 	}
 
@@ -55,8 +54,8 @@ public class ApiExceptionHandler {
 	public ProblemDetail handleMissingHeader(MissingRequestHeaderException ex) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
 				"Missing required header: " + ex.getHeaderName());
-	}
-
+  }
+  
 	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
 	public ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
@@ -64,13 +63,13 @@ public class ApiExceptionHandler {
 	}
 
 	/**
-	 * Pessimistic locking (F09) turns one slow or stuck transaction into held row locks;
-	 * without this mapping, pool exhaustion or a lock/ statement timeout under contention
-	 * would fall through to the generic 500 handler below and look like an application
-	 * bug rather than a temporary capacity limit a client can reasonably retry.
+	 * Pessimistic locking (F09) turns one slow or stuck transaction into
+	 * held row locks; without this mapping, pool exhaustion or a lock/
+	 * statement timeout under contention would fall through to the
+	 * generic 500 handler below and look like an application bug rather
+	 * than a temporary capacity limit a client can reasonably retry.
 	 */
-	@ExceptionHandler({ CannotCreateTransactionException.class, PessimisticLockingFailureException.class,
-			QueryTimeoutException.class })
+	@ExceptionHandler({CannotCreateTransactionException.class, PessimisticLockingFailureException.class, QueryTimeoutException.class})
 	public ProblemDetail handleTemporarilyUnavailable(Exception ex) {
 		log.warn("Temporarily unavailable: {}", ex.getMessage());
 		return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,

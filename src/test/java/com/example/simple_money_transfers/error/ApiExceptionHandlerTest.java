@@ -26,52 +26,57 @@ class ApiExceptionHandlerTest {
 	@Test
 	void notFoundExceptionMapsTo404() throws Exception {
 		mockMvc.perform(post("/probe/not-found"))
-			.andExpect(status().isNotFound())
-			.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-			.andExpect(jsonPath("$.status").value(404))
-			.andExpect(jsonPath("$.detail").value("account 123 not found"));
+				.andExpect(status().isNotFound())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.status").value(404))
+				.andExpect(jsonPath("$.detail").value("account 123 not found"));
 	}
 
 	@Test
 	void businessRuleExceptionMapsTo422() throws Exception {
 		mockMvc.perform(post("/probe/business-rule"))
-			.andExpect(status().isUnprocessableContent())
-			.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-			.andExpect(jsonPath("$.status").value(422))
-			.andExpect(jsonPath("$.detail").value("insufficient funds"));
+				.andExpect(status().isUnprocessableContent())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.status").value(422))
+				.andExpect(jsonPath("$.detail").value("insufficient funds"));
 	}
 
 	@Test
 	void beanValidationFailureMapsTo400() throws Exception {
-		mockMvc.perform(post("/probe/validated").contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\"}"))
-			.andExpect(status().isBadRequest())
-			.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-			.andExpect(jsonPath("$.status").value(400));
+		mockMvc.perform(post("/probe/validated")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"name\":\"\"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.status").value(400));
 	}
 
 	@Test
 	void malformedJsonMapsTo400() throws Exception {
-		mockMvc.perform(post("/probe/validated").contentType(MediaType.APPLICATION_JSON).content("{not json"))
-			.andExpect(status().isBadRequest())
-			.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-			.andExpect(jsonPath("$.detail").value("Malformed request body"));
+		mockMvc.perform(post("/probe/validated")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{not json"))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.detail").value("Malformed request body"));
 	}
 
 	@Test
 	void malformedPathVariableMapsTo400() throws Exception {
 		mockMvc.perform(get("/probe/type-mismatch/not-a-uuid"))
-			.andExpect(status().isBadRequest())
-			.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-			.andExpect(jsonPath("$.detail").value("Malformed value for parameter 'id'"));
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.detail").value("Malformed value for parameter 'id'"));
 	}
 
 	@Test
 	void unexpectedExceptionMapsTo500WithNoLeakedDetail() throws Exception {
 		mockMvc.perform(post("/probe/boom"))
-			.andExpect(status().isInternalServerError())
-			.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-			.andExpect(jsonPath("$.detail").value("An unexpected error occurred"))
-			.andExpect(jsonPath("$.detail", org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("secret"))));
+				.andExpect(status().isInternalServerError())
+				.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.detail").value("An unexpected error occurred"))
+				.andExpect(jsonPath("$.detail", org.hamcrest.Matchers.not(
+						org.hamcrest.Matchers.containsString("secret"))));
 	}
 
 }

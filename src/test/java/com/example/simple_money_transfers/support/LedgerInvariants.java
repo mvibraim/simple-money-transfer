@@ -3,12 +3,13 @@ package com.example.simple_money_transfers.support;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
- * The invariants that must hold after every write, called from every integration test's
- * {@code @AfterEach} from F09 onward - which makes each functional test a partial
- * concurrency test for free.
+ * The invariants that must hold after every write, called from every
+ * integration test's {@code @AfterEach} from F09 onward - which makes each
+ * functional test a partial concurrency test for free.
  */
 public final class LedgerInvariants {
 
@@ -24,8 +25,8 @@ public final class LedgerInvariants {
 
 	private static void assertLedgerSumsToZero(JdbcClient jdbcClient) {
 		BigDecimal sum = jdbcClient.sql("SELECT COALESCE(SUM(amount), 0) FROM ledger_entry")
-			.query(BigDecimal.class)
-			.single();
+				.query(BigDecimal.class)
+				.single();
 		assertThat(sum).as("SUM(ledger_entry.amount) must be exactly zero").isEqualByComparingTo(BigDecimal.ZERO);
 	}
 
@@ -42,8 +43,8 @@ public final class LedgerInvariants {
 
 	private static void assertNoNegativeCustomerBalance(JdbcClient jdbcClient) {
 		var negative = jdbcClient.sql("SELECT id FROM account WHERE account_type = 'CUSTOMER' AND balance < 0")
-			.query()
-			.listOfRows();
+				.query()
+				.listOfRows();
 		assertThat(negative).as("no customer account may have a negative balance").isEmpty();
 	}
 

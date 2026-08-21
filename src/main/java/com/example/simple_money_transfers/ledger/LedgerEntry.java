@@ -1,5 +1,9 @@
 package com.example.simple_money_transfers.ledger;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -8,16 +12,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 
 /**
- * Immutable by construction, not just by database trigger: no field here has a setter,
- * and {@link LedgerEntryRepository} exposes no update or delete method. This is the
- * application-level half of the immutability guarantee - the Postgres-only trigger (V3)
- * is the other half, and neither alone is sufficient.
+ * Immutable by construction, not just by database trigger: no field here
+ * has a setter, and {@link LedgerEntryRepository} exposes no update or
+ * delete method. This is the application-level half of the immutability
+ * guarantee - the Postgres-only trigger (V3) is the other half, and
+ * neither alone is sufficient.
  */
 @Entity
 @Table(name = "ledger_entry")
