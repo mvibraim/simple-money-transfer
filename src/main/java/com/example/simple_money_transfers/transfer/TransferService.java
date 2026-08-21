@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,11 +36,18 @@ public class TransferService {
 
 	private final LedgerEntryRepository ledgerEntryRepository;
 
+	// Self-injected proxy: deposit()/withdraw() call execute() through this
+	// instead of via `this`, so the call crosses Spring's transactional
+	// proxy instead of bypassing it - see the Sonar-flagged self-invocation
+	// pitfall this fixes.
+	private final TransferService self;
+
 	public TransferService(AccountRepository accountRepository, TransferRepository transferRepository,
-			LedgerEntryRepository ledgerEntryRepository) {
+			LedgerEntryRepository ledgerEntryRepository, @Lazy TransferService self) {
 		this.accountRepository = accountRepository;
 		this.transferRepository = transferRepository;
 		this.ledgerEntryRepository = ledgerEntryRepository;
+		this.self = self;
 	}
 
 	@Transactional
@@ -108,7 +116,7 @@ public class TransferService {
 	public Transfer deposit(UUID accountId, BigDecimal amount, String reference) {
 		Account target = requireAccount(accountId);
 		Account system = systemAccountFor(target.getCurrency());
-		return execute(new TransferCommand(system.getId(), target.getId(), amount, target.getCurrency(),
+		return self.execute(new TransferCommand(system.getId(), target.getId(), amount, target.getCurrency(),
 				TransferKind.DEPOSIT, reference));
 	}
 
@@ -116,7 +124,7 @@ public class TransferService {
 	public Transfer withdraw(UUID accountId, BigDecimal amount, String reference) {
 		Account source = requireAccount(accountId);
 		Account system = systemAccountFor(source.getCurrency());
-		return execute(new TransferCommand(source.getId(), system.getId(), amount, source.getCurrency(),
+		return self.execute(new TransferCommand(source.getId(), system.getId(), amount, source.getCurrency(),
 				TransferKind.WITHDRAWAL, reference));
 	}
 
