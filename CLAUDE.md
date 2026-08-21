@@ -47,11 +47,11 @@ Test reports land at `build/reports/tests/test/index.html`; open it when a failu
 
 Always invoke the wrapper (`./gradlew`), never a system-installed `gradle` — the wrapper is what pins the build to Gradle 9.7.1 and, via the toolchain, JDK 25.
 
-`./gradlew build` also runs Jacoco (coverage report at `build/reports/jacoco/test/html/index.html`) and is what CI's Lint job pairs with `sonar` (`./gradlew build sonar`, needs `SONAR_TOKEN`) for SonarCloud analysis. `-PexcludeTags=<tag>[,<tag>...]` filters out JUnit-tagged tests from a `test` run. `bootBuildImage` publishes a fixed `simple-money-transfers:latest` tag (not the default group/name/version-derived one) so `compose.app.yaml` can reference it predictably.
+`./gradlew build` also runs Jacoco (coverage report at `build/reports/jacoco/test/html/index.html`) and is what CI's Lint job pairs with `sonar` (`./gradlew build sonar`, needs `SONAR_TOKEN`) for SonarCloud analysis. `-PexcludeTags=<tag>[,<tag>...]` filters out JUnit-tagged tests from a `test` run. `bootBuildImage` publishes a fixed `simple-money-transfers:latest` tag (not the default group/name/version-derived one); the `Dockerfile`-based `docker compose up` build path (below) tags its image the same way, so either build method is interchangeable.
 
 ## Local dev datasource
 
-`bootRun` needs a real Postgres, not H2: `compose.yaml` starts one (`docker compose up`), and `compose.app.yaml` runs the packaged app image against it. Copy `.env.example` to `.env` and fill in the secrets `compose.yaml`/`compose.app.yaml` require before either compose file will start. Tests don't need any of this — see Testing conventions below.
+`bootRun` needs a real Postgres, not H2: `docker compose up postgres -d` starts just the database, for the `bootRun` dev loop. `docker compose up` (no service name) builds the app from `Dockerfile` and runs the full stack — app + Postgres — against each other. Copy `.env.example` to `.env` and fill in the secrets `compose.yaml` requires before either form will start. Tests don't need any of this — see Testing conventions below.
 
 Flyway migrations live under `src/main/resources/db/migration/common` (vendor-neutral) and `db/migration/postgresql` (Postgres-only), wired via `spring.flyway.locations: classpath:db/migration/common,classpath:db/migration/{vendor}`. Put a migration in `postgresql/` only if it genuinely needs Postgres-specific SQL — everything else belongs in `common/`, since the H2 test datasource (`MODE=PostgreSQL`) replays `common/` too.
 
@@ -98,7 +98,7 @@ The Gradle toolchain (`java { toolchain { languageVersion = JavaLanguageVersion.
   java -XX:AOTCache=app.aot -jar app.jar                                        # production start
   ```
 
-  Any application or JDK change invalidates `app.aot`, so regenerate it as part of the image build rather than by hand — not yet wired into `bootBuildImage` here. Prefer this over classic CDS (`-XX:ArchiveClassesAtExit`), which is now the fallback for pre-25 JDKs only.
+  Any application or JDK change invalidates `app.aot`, so regenerate it as part of the image build rather than by hand — wired into the `Dockerfile`'s runtime stage as a training-run `RUN` step (not `bootBuildImage`, which still doesn't do this). Because this app's context can't refresh without a reachable Postgres (Flyway migrates + `ddl-auto: validate`), that training run fakes out the database with training-only `-D` overrides (`spring.flyway.enabled=false`, `hibernate.boot.allow_jdbc_metadata_access=false`, an explicit dialect, dummy datasource credentials) that never reach the actual runtime config — see the Dockerfile's comments. `-XX:+UseCompactObjectHeaders` must be identical between the training run and the production start, or the object layout mismatch silently invalidates the cache. Prefer this over classic CDS (`-XX:ArchiveClassesAtExit`), which is now the fallback for pre-25 JDKs only.
 - Module Import Declarations and Compact Source Files (JEPs 511/512, final) suit throwaway scripts, not this application's production or test sources.
 
 Structured Concurrency, Primitive Types in Patterns, the PEM API, Stable Values, and the Vector API are still preview or incubator in 25 — don't take a dependency on a `--enable-preview` API in application code for these.

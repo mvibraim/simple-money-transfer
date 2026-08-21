@@ -2,6 +2,18 @@
 
 **Branch:** `feat/17-app-container-stack` · **Depends on:** F16
 
+> **Partially superseded.** Both design calls below — Buildpacks over a
+> hand-rolled Dockerfile, and keeping `compose.app.yaml` separate so a
+> plain `docker compose up` stays Postgres-only — were later reversed:
+> a multi-stage `Dockerfile` replaced `bootBuildImage` as the primary
+> build path, and the `app` service was folded into `compose.yaml` so
+> `docker compose up` alone runs the full stack. That Dockerfile also
+> wires in the Java 25 AOT cache (CLAUDE.md's Java 25 toolchain section)
+> via a training-run `RUN` step with a stubbed-out database, layered
+> `--layers` extraction, and pinned base image digests. Kept here for
+> history; the reasoning below was sound for what F17 was solving at the
+> time.
+
 ## Goal
 
 Make "run the project locally" a single command for someone who isn't a

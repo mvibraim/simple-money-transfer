@@ -1,0 +1,10 @@
+.git
+.github
+.gradle
+.vscode
+.claude
+build
+docs
+*.md
+.env
+.env.example
