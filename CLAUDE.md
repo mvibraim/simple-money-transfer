@@ -20,6 +20,14 @@ This project uses a **layer-based** package structure, not a feature-based one �
 
 When adding a new class, place it by what it *is* (controller, service, entity, ...), not by which feature it supports — there is no `transfer/`, `account/`, etc. feature package.
 
+## Code style
+
+Formatting is enforced, not a matter of taste: **Spring Java Format** (`io.spring.javaformat` Gradle plugin), the same formatter Spring Framework and Spring Boot use on themselves. Tabs, not spaces — this matches the tab-indented style Spring Initializr scaffolds with, so no reformat-away-from-the-scaffold tension.
+
+- `./gradlew format` — reformat before committing.
+- `./gradlew checkFormat` — wired into `check`, so a plain `./gradlew build` catches formatting violations too.
+- Don't hand-format to match Spring Java Format's output — let the tool do it, and don't fight it with manual line breaks or alignment.
+
 ## AI collaboration conventions
 
 - **Planning** — architecture and design decisions, entering plan mode, anything before code gets written: **Opus** at **xhigh** effort. This is a money-movement service; the design surface (ledger correctness, concurrency, idempotency) is worth the deeper pass before a line of code exists.

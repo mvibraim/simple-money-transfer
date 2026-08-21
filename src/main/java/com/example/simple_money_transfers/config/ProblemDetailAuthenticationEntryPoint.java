@@ -22,8 +22,8 @@ public class ProblemDetailAuthenticationEntryPoint implements AuthenticationEntr
 	}
 
 	@Override
-	public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
-			throws IOException, ServletException {
+	public void commence(HttpServletRequest request, HttpServletResponse response,
+			AuthenticationException authException) throws IOException, ServletException {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Missing or invalid API key");
 		response.setStatus(HttpStatus.UNAUTHORIZED.value());
 		response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);

@@ -7,9 +7,9 @@ import java.util.Currency;
 /**
  * The boundary check for every monetary amount entering the system.
  * <p>
- * Postgres silently rounds a {@code NUMERIC(19,4)} column on an over-scale
- * insert rather than raising an error, so this is the only thing standing
- * between a client-supplied amount and silent truncation.
+ * Postgres silently rounds a {@code NUMERIC(19,4)} column on an over-scale insert rather
+ * than raising an error, so this is the only thing standing between a client-supplied
+ * amount and silent truncation.
  */
 public final class MoneyNormalizer {
 
@@ -26,10 +26,9 @@ public final class MoneyNormalizer {
 	}
 
 	/**
-	 * Validates that {@code amount}'s scale does not exceed what
-	 * {@code currencyCode} allows, then normalizes it to scale 4 for
-	 * storage. Never rounds: once the scale check passes, widening to
-	 * scale 4 cannot lose precision.
+	 * Validates that {@code amount}'s scale does not exceed what {@code currencyCode}
+	 * allows, then normalizes it to scale 4 for storage. Never rounds: once the scale
+	 * check passes, widening to scale 4 cannot lose precision.
 	 */
 	public static BigDecimal normalize(BigDecimal amount, String currencyCode) {
 		Currency currency = requireValidCurrency(currencyCode);

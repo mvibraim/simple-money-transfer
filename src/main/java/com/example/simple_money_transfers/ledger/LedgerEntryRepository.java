@@ -8,8 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.Repository;
 
 /**
- * Deliberately exposes no update or delete method - see {@link LedgerEntry}
- * for why immutability matters here.
+ * Deliberately exposes no update or delete method - see {@link LedgerEntry} for why
+ * immutability matters here.
  */
 public interface LedgerEntryRepository extends Repository<LedgerEntry, Long> {
 

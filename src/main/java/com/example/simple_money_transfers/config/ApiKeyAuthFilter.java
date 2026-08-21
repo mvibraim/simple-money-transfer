@@ -38,10 +38,11 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
 
 	private java.util.Optional<String> matchingClientId(String presentedKey) {
 		byte[] presented = presentedKey.getBytes(StandardCharsets.UTF_8);
-		return appProperties.getApiKeys().stream()
-				.filter(entry -> MessageDigest.isEqual(presented, entry.key().getBytes(StandardCharsets.UTF_8)))
-				.map(ApiKeyEntry::id)
-				.findFirst();
+		return appProperties.getApiKeys()
+			.stream()
+			.filter(entry -> MessageDigest.isEqual(presented, entry.key().getBytes(StandardCharsets.UTF_8)))
+			.map(ApiKeyEntry::id)
+			.findFirst();
 	}
 
 }
