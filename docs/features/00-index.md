@@ -25,8 +25,10 @@ Docker** — see "Testing strategy" below.
 | 14 | `feat/14-idempotent-movement` | `TransferOrchestrator`, replay semantics, header wiring |
 | 15 | `feat/15-concurrency-tests` | Parallel/ABBA/ring tests on H2 (scoped — see caveat below) |
 | 16 | `feat/16-operational-hardening` | Pool + DB timeouts, `ConstraintPresenceIT`, least-privilege role |
-| 17 | `feat/17-app-container-stack` | `compose.app.yaml`, image build, README |
+| 17 | `feat/17-app-container-stack` | `compose.app.yaml`, image build, README — **superseded by F20**, see that doc |
 | 18 | `feat/18-cursor-pagination` | Cursor pagination on `GET /accounts/{id}/entries`, replacing F12's offset pagination |
+| 19 | `feat/19-openapi-documentation` | OpenAPI 3.1 docs via springdoc, `OpenApiContractIT` snapshot |
+| 20 | `feat/20-docker-compose-stack` | Single-command `docker compose up`, layered Dockerfile image, AOT cache |
 
 ## Dependency order
 
@@ -39,8 +41,7 @@ introduced earlier, so branches are not independently rebasable onto
 
 | Feature | Status |
 |---|---|
-| F00 | in progress |
-| F01–F17 | planned |
+| F00–F20 | shipped |
 
 ## Testing strategy
 
