@@ -93,6 +93,8 @@ class IdempotencyIT extends AbstractIntegrationTest {
 			.andReturn();
 
 		assertThat(second.getResponse().getContentAsString()).isEqualTo(first.getResponse().getContentAsString());
+		assertThat(first.getResponse().getHeader("Location")).isNotBlank();
+		assertThat(second.getResponse().getHeader("Location")).isEqualTo(first.getResponse().getHeader("Location"));
 		assertThat(accountRepository.findById(source.getId()).orElseThrow().getBalance())
 			.isEqualByComparingTo("70.0000");
 		assertThat(accountRepository.findById(target.getId()).orElseThrow().getBalance())

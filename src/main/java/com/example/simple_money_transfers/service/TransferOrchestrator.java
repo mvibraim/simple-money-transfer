@@ -1,6 +1,7 @@
 package com.example.simple_money_transfers.service;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -110,6 +111,7 @@ public class TransferOrchestrator {
 			throw new IdempotencyConflictException(idempotencyKey);
 		}
 		return ResponseEntity.status(existing.getResponseStatus())
+			.location(URI.create("/api/v1/transfers/" + existing.getTransferId()))
 			.contentType(MediaType.APPLICATION_JSON)
 			.body(existing.getResponseBody());
 	}
