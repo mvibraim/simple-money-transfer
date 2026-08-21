@@ -160,7 +160,7 @@ class IdempotencyIT extends AbstractIntegrationTest {
 				}
 			}).toList();
 
-			assertThat(statuses).allMatch(status -> status == 201);
+			assertThat(statuses).hasSize(concurrency).allMatch(status -> status == 201);
 		}
 		finally {
 			executor.shutdown();
