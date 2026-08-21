@@ -26,6 +26,16 @@ class ApiKeyAuthIT extends AbstractIntegrationTest {
 	}
 
 	@Test
+	void apiDocsEndpointRequiresNoKey() throws Exception {
+		mockMvc.perform(get("/v3/api-docs")).andExpect(status().isOk());
+	}
+
+	@Test
+	void swaggerUiRequiresNoKey() throws Exception {
+		mockMvc.perform(get("/swagger-ui.html")).andExpect(status().is3xxRedirection());
+	}
+
+	@Test
 	void protectedEndpointRejectsMissingKey() throws Exception {
 		mockMvc.perform(get("/actuator/info"))
 			.andExpect(status().isUnauthorized())

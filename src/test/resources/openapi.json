@@ -1,0 +1,763 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "Simple Money Transfers API",
+    "description" : "Accounts, deposits, withdrawals, and transfers backed by an append-only double-entry ledger.",
+    "license" : {
+      "name" : "Apache 2.0"
+    },
+    "version" : "v1"
+  },
+  "servers" : [ {
+    "url" : "http://localhost",
+    "description" : "Generated server url"
+  } ],
+  "security" : [ {
+    "apiKey" : [ ]
+  } ],
+  "tags" : [ {
+    "name" : "Transfers",
+    "description" : "Money movement between two accounts."
+  }, {
+    "name" : "Accounts",
+    "description" : "Account lifecycle, balance lookup, funding (deposits/withdrawals), and ledger history."
+  } ],
+  "paths" : {
+    "/api/v1/transfers" : {
+      "post" : {
+        "tags" : [ "Transfers" ],
+        "summary" : "Transfer funds between two accounts",
+        "description" : "Requires an `Idempotency-Key`: a replayed key with an identical body re-serves the original 201 response; the same key with a different body is rejected with 422.",
+        "operationId" : "create",
+        "parameters" : [ {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "description" : "Client-chosen key scoping this request for safe retries, unique per API client",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateTransferRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Transfer applied (or replayed from an earlier identical request)",
+            "headers" : {
+              "Location" : {
+                "description" : "URL of the resulting transfer",
+                "style" : "simple",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Validation failed, malformed body, or missing `Idempotency-Key`"
+          },
+          "404" : {
+            "description" : "Unknown source or target account id"
+          },
+          "422" : {
+            "description" : "Insufficient funds, mismatched currencies, source equals target, an inactive account, or the same `Idempotency-Key` reused with a different body"
+          },
+          "503" : {
+            "description" : "Temporarily unable to acquire the account locks; retry"
+          },
+          "401" : {
+            "$ref" : "#/components/responses/Unauthorized"
+          },
+          "500" : {
+            "$ref" : "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/accounts" : {
+      "post" : {
+        "tags" : [ "Accounts" ],
+        "summary" : "Create an account",
+        "operationId" : "create_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateAccountRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Account created",
+            "headers" : {
+              "Location" : {
+                "description" : "URL of the new account",
+                "style" : "simple",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Validation failed or malformed request body"
+          },
+          "401" : {
+            "$ref" : "#/components/responses/Unauthorized"
+          },
+          "500" : {
+            "$ref" : "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/accounts/{id}/withdrawals" : {
+      "post" : {
+        "tags" : [ "Accounts" ],
+        "summary" : "Withdraw funds from an account",
+        "description" : "Sent to the SYSTEM account for the account's currency. Requires an `Idempotency-Key`; see the deposit endpoint for its replay semantics.",
+        "operationId" : "withdraw",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "description" : "Client-chosen key scoping this request for safe retries, unique per API client",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/WithdrawalRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Withdrawal applied (or replayed from an earlier identical request)",
+            "headers" : {
+              "Location" : {
+                "description" : "URL of the resulting transfer",
+                "style" : "simple",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Validation failed, malformed body, or missing `Idempotency-Key`"
+          },
+          "404" : {
+            "description" : "No account with this id"
+          },
+          "422" : {
+            "description" : "Insufficient funds, same `Idempotency-Key` reused with a different body, or the account is not ACTIVE"
+          },
+          "503" : {
+            "description" : "Temporarily unable to acquire the account lock; retry"
+          },
+          "401" : {
+            "$ref" : "#/components/responses/Unauthorized"
+          },
+          "500" : {
+            "$ref" : "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/accounts/{id}/deposits" : {
+      "post" : {
+        "tags" : [ "Accounts" ],
+        "summary" : "Deposit funds into an account",
+        "description" : "Funded from the SYSTEM account for the account's currency. Requires an `Idempotency-Key`: a replayed key with an identical body re-serves the original 201 response; the same key with a different body is rejected with 422.",
+        "operationId" : "deposit",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "description" : "Client-chosen key scoping this request for safe retries, unique per API client",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DepositRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Deposit applied (or replayed from an earlier identical request)",
+            "headers" : {
+              "Location" : {
+                "description" : "URL of the resulting transfer",
+                "style" : "simple",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Validation failed, malformed body, or missing `Idempotency-Key`"
+          },
+          "404" : {
+            "description" : "No account with this id"
+          },
+          "422" : {
+            "description" : "Same `Idempotency-Key` reused with a different body, the account is not ACTIVE, or its currency has no funding SYSTEM account"
+          },
+          "503" : {
+            "description" : "Temporarily unable to acquire the account lock; retry"
+          },
+          "401" : {
+            "$ref" : "#/components/responses/Unauthorized"
+          },
+          "500" : {
+            "$ref" : "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/{id}" : {
+      "get" : {
+        "tags" : [ "Transfers" ],
+        "summary" : "Fetch a transfer by id",
+        "operationId" : "get",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Transfer found",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No transfer with this id"
+          },
+          "401" : {
+            "$ref" : "#/components/responses/Unauthorized"
+          },
+          "500" : {
+            "$ref" : "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/accounts/{id}" : {
+      "get" : {
+        "tags" : [ "Accounts" ],
+        "summary" : "Fetch an account by id",
+        "operationId" : "get_1",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Account found",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No account with this id"
+          },
+          "401" : {
+            "$ref" : "#/components/responses/Unauthorized"
+          },
+          "500" : {
+            "$ref" : "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/accounts/{id}/entries" : {
+      "get" : {
+        "tags" : [ "Accounts" ],
+        "summary" : "List an account's ledger entries, newest first",
+        "description" : "Cursor-paginated. Pass the previous response's `nextCursor` to fetch the next page; `hasMore` is false once the last page has been reached.",
+        "operationId" : "entries",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "description" : "Opaque pagination cursor from a previous response's `nextCursor`; omit for the first page",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "Page size",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 100,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "A page of ledger entries",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LedgerHistoryResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Malformed cursor, or `limit` outside 1-100"
+          },
+          "404" : {
+            "description" : "No account with this id"
+          },
+          "401" : {
+            "$ref" : "#/components/responses/Unauthorized"
+          },
+          "500" : {
+            "$ref" : "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/accounts/{id}/balance" : {
+      "get" : {
+        "tags" : [ "Accounts" ],
+        "summary" : "Fetch an account's current balance",
+        "operationId" : "balance",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Balance as of now",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BalanceResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No account with this id"
+          },
+          "401" : {
+            "$ref" : "#/components/responses/Unauthorized"
+          },
+          "500" : {
+            "$ref" : "#/components/responses/ServerError"
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "ProblemDetail" : {
+        "type" : "object",
+        "description" : "RFC 9457 problem details, as returned by every error response.",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "example" : "about:blank"
+          },
+          "title" : {
+            "type" : "string",
+            "example" : "Unprocessable Content"
+          },
+          "status" : {
+            "type" : "integer",
+            "example" : 422
+          },
+          "detail" : {
+            "type" : "string",
+            "example" : "Insufficient funds"
+          },
+          "instance" : {
+            "type" : "string"
+          },
+          "errors" : {
+            "type" : "array",
+            "description" : "Present only on 400 validation failures: one \"field: message\" entry per violation.",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "CreateTransferRequest" : {
+        "type" : "object",
+        "properties" : {
+          "sourceAccountId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "targetAccountId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "amount" : {
+            "type" : "string",
+            "example" : "25.00"
+          },
+          "currency" : {
+            "type" : "string",
+            "description" : "ISO 4217 currency code; must match both accounts' currency",
+            "example" : "USD",
+            "pattern" : "[A-Z]{3}"
+          },
+          "reference" : {
+            "type" : "string",
+            "example" : "rent",
+            "maxLength" : 140,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "amount", "currency", "sourceAccountId", "targetAccountId" ]
+      },
+      "TransferResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "sourceAccountId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "For a DEPOSIT, the funding SYSTEM account"
+          },
+          "targetAccountId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "For a WITHDRAWAL, the receiving SYSTEM account"
+          },
+          "amount" : {
+            "type" : "string",
+            "example" : "25.00"
+          },
+          "currency" : {
+            "type" : "string",
+            "description" : "ISO 4217 currency code",
+            "example" : "USD"
+          },
+          "kind" : {
+            "type" : "string",
+            "enum" : [ "TRANSFER", "DEPOSIT", "WITHDRAWAL" ]
+          },
+          "reference" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "CreateAccountRequest" : {
+        "type" : "object",
+        "properties" : {
+          "holderName" : {
+            "type" : "string",
+            "example" : "Alice",
+            "minLength" : 1
+          },
+          "currency" : {
+            "type" : "string",
+            "description" : "ISO 4217 currency code",
+            "example" : "USD",
+            "minLength" : 1,
+            "pattern" : "[A-Z]{3}"
+          }
+        },
+        "required" : [ "currency", "holderName" ]
+      },
+      "AccountResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "accountRef" : {
+            "type" : "string",
+            "description" : "System-generated reference, distinct from the id",
+            "example" : "ACCT-7F3A2B1CQ9ZK"
+          },
+          "holderName" : {
+            "type" : "string"
+          },
+          "accountType" : {
+            "type" : "string",
+            "enum" : [ "CUSTOMER", "SYSTEM" ]
+          },
+          "currency" : {
+            "type" : "string",
+            "description" : "ISO 4217 currency code",
+            "example" : "USD"
+          },
+          "balance" : {
+            "type" : "string",
+            "example" : "100.00"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "ACTIVE", "FROZEN", "CLOSED" ]
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "WithdrawalRequest" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "string",
+            "example" : "50.00"
+          },
+          "reference" : {
+            "type" : "string",
+            "example" : "rent",
+            "maxLength" : 140,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "amount" ]
+      },
+      "DepositRequest" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "string",
+            "example" : "100.00"
+          },
+          "reference" : {
+            "type" : "string",
+            "example" : "paycheck",
+            "maxLength" : 140,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "amount" ]
+      },
+      "LedgerEntryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "transferId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "direction" : {
+            "type" : "string",
+            "enum" : [ "DEBIT", "CREDIT" ]
+          },
+          "amount" : {
+            "type" : "string",
+            "description" : "Signed: negative for DEBIT, positive for CREDIT",
+            "example" : "-25.00"
+          },
+          "currency" : {
+            "type" : "string",
+            "description" : "ISO 4217 currency code",
+            "example" : "USD"
+          },
+          "balanceAfter" : {
+            "type" : "string",
+            "description" : "This account's balance immediately after the entry",
+            "example" : "75.00"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "LedgerHistoryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "entries" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LedgerEntryResponse"
+            }
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "nextCursor" : {
+            "type" : "string",
+            "description" : "Opaque cursor for the next page; null once `hasMore` is false",
+            "example" : "djE6NDI"
+          },
+          "hasMore" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "BalanceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "accountId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "balance" : {
+            "type" : "string",
+            "example" : "100.00"
+          },
+          "currency" : {
+            "type" : "string",
+            "description" : "ISO 4217 currency code",
+            "example" : "USD"
+          },
+          "asOf" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      }
+    },
+    "responses" : {
+      "Unauthorized" : {
+        "description" : "Missing or invalid API key",
+        "content" : {
+          "application/problem+json" : {
+            "schema" : {
+              "$ref" : "#/components/schemas/ProblemDetail"
+            }
+          }
+        }
+      },
+      "ServerError" : {
+        "description" : "An unexpected error occurred",
+        "content" : {
+          "application/problem+json" : {
+            "schema" : {
+              "$ref" : "#/components/schemas/ProblemDetail"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "apiKey" : {
+        "type" : "apiKey",
+        "name" : "X-API-Key",
+        "in" : "header"
+      }
+    }
+  }
+}

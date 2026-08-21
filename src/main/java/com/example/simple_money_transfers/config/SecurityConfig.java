@@ -19,8 +19,11 @@ public class SecurityConfig {
 			throws Exception {
 		http.csrf(csrf -> csrf.disable())
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-			.authorizeHttpRequests(
-					auth -> auth.requestMatchers("/actuator/health").permitAll().anyRequest().authenticated())
+			.authorizeHttpRequests(auth -> auth
+				.requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+				.permitAll()
+				.anyRequest()
+				.authenticated())
 			.exceptionHandling(exceptions -> exceptions
 				.authenticationEntryPoint(new ProblemDetailAuthenticationEntryPoint(jsonMapper)))
 			.addFilterBefore(new ApiKeyAuthFilter(appProperties), UsernamePasswordAuthenticationFilter.class);

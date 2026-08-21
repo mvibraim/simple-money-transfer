@@ -51,6 +51,19 @@ spring:
       # above set that ceiling regardless of the thread model.
       enabled: true
 
+springdoc:
+  # Scoped to the controller package so a @SpringBootTest's full classpath
+  # component scan (which also picks up test-only controllers like
+  # exception/ProbeController) can never leak into the generated spec.
+  packages-to-scan: com.example.simple_money_transfers.controller
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  show-actuator: false
+
 app:
   security:
     api-keys:

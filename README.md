@@ -27,6 +27,20 @@ The app listens on `localhost:8080`. Every endpoint except
 `/actuator/health` requires an `X-API-Key` header matching the `API_KEY`
 you set in `.env`.
 
+## API documentation
+
+The API is documented as OpenAPI 3.1, generated from the controller and
+DTO annotations - no separate spec to keep in sync by hand:
+
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- Raw spec (JSON): `http://localhost:8080/v3/api-docs`
+
+Both are reachable without an `X-API-Key`. A checked-in snapshot at
+`src/test/resources/openapi.json` fails the build
+(`OpenApiContractIT`) if the generated spec drifts from what's
+committed; see that test's Javadoc for how to regenerate it after a
+deliberate API change.
+
 ### Just the database
 
 `docker compose up -d` (no `-f` flags) starts Postgres only - the loop for
