@@ -40,6 +40,9 @@ spring:
     deserialization:
       fail-on-unknown-properties: true
       use-big-decimal-for-floats: true
+  mvc:
+    problemdetails:
+      enabled: true
   threads:
     virtual:
       # Safe on the Java 25 toolchain (JEP 491 removed the old

@@ -16,5 +16,9 @@ services:
       SPRING_FLYWAY_PASSWORD: ${SPRING_FLYWAY_PASSWORD:?SPRING_FLYWAY_PASSWORD must be set}
       API_CLIENT_ID: ${API_CLIENT_ID:?API_CLIENT_ID must be set}
       API_KEY: ${API_KEY:?API_KEY must be set}
+      # JEP 519, off by default on the JDK 25 toolchain (CLAUDE.md's Java 25
+      # toolchain section) - the JVM picks this up directly, independent of
+      # how the image itself was built.
+      JAVA_TOOL_OPTIONS: "-XX:+UseCompactObjectHeaders"
     ports:
       - "8080:8080"
