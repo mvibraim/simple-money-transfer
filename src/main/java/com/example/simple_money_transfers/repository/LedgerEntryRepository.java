@@ -1,10 +1,10 @@
 package com.example.simple_money_transfers.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.repository.Repository;
 
 import com.example.simple_money_transfers.model.entity.LedgerEntry;
@@ -19,6 +19,8 @@ public interface LedgerEntryRepository extends Repository<LedgerEntry, Long> {
 
 	Optional<LedgerEntry> findById(Long id);
 
-	Page<LedgerEntry> findByAccountId(UUID accountId, Pageable pageable);
+	List<LedgerEntry> findByAccountIdOrderByIdDesc(UUID accountId, Limit limit);
+
+	List<LedgerEntry> findByAccountIdAndIdLessThanOrderByIdDesc(UUID accountId, Long cursorId, Limit limit);
 
 }

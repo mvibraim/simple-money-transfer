@@ -5,8 +5,8 @@ import java.security.Principal;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,6 +27,7 @@ import com.example.simple_money_transfers.model.entity.Account;
 import com.example.simple_money_transfers.service.AccountService;
 import com.example.simple_money_transfers.service.LedgerService;
 import com.example.simple_money_transfers.service.TransferOrchestrator;
+import com.example.simple_money_transfers.util.CursorCodec;
 
 @RestController
 @RequestMapping("/api/v1/accounts")
@@ -77,12 +78,12 @@ public class AccountController {
 	}
 
 	@GetMapping("/{id}/entries")
-	public LedgerHistoryResponse entries(@PathVariable UUID id, @RequestParam(defaultValue = "0") int page,
-			@RequestParam(defaultValue = "20") int size) {
+	public LedgerHistoryResponse entries(@PathVariable UUID id, @RequestParam(required = false) String cursor,
+			@RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
 		// Ordering is fixed to id DESC (matching F08's idx_ledger_account_history
-		// index) and is not client-selectable - only page/size are.
-		var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-		return LedgerHistoryResponse.from(ledgerService.getHistory(id, pageable));
+		// index) and is not client-selectable - only cursor/limit are.
+		Long cursorId = (cursor != null) ? CursorCodec.decode(cursor) : null;
+		return LedgerHistoryResponse.from(ledgerService.getHistory(id, cursorId, limit), limit);
 	}
 
 }

@@ -2,6 +2,11 @@
 
 **Branch:** `feat/12-ledger-history` · **Depends on:** F11
 
+> **Superseded by [F18](18-cursor-pagination.md).** The `page`/`size`
+> offset pagination and `totalElements`/`totalPages` response fields
+> described below were replaced by cursor pagination (`cursor`/`limit`,
+> `nextCursor`/`hasMore`). Kept here for history; F18 explains why.
+
 ## Goal
 
 Let a caller see the audit trail behind an account's balance — the whole

@@ -26,6 +26,7 @@ Docker** — see "Testing strategy" below.
 | 15 | `feat/15-concurrency-tests` | Parallel/ABBA/ring tests on H2 (scoped — see caveat below) |
 | 16 | `feat/16-operational-hardening` | Pool + DB timeouts, `ConstraintPresenceIT`, least-privilege role |
 | 17 | `feat/17-app-container-stack` | `compose.app.yaml`, image build, README |
+| 18 | `feat/18-cursor-pagination` | Cursor pagination on `GET /accounts/{id}/entries`, replacing F12's offset pagination |
 
 ## Dependency order
 

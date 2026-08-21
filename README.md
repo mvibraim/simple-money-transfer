@@ -58,9 +58,11 @@ curl -s -XPOST localhost:8080/api/v1/transfers -H "X-API-Key: $API_KEY" \
   -H 'Idempotency-Key: tr-1' -H 'Content-Type: application/json' \
   -d "{\"sourceAccountId\":\"$ALICE\",\"targetAccountId\":\"$BOB\",\"amount\":\"25.00\",\"currency\":\"USD\"}"
 
-# Check balances and ledger history
+# Check balances and ledger history (cursor-paginated, newest first)
 curl -s "localhost:8080/api/v1/accounts/$ALICE/balance" -H "X-API-Key: $API_KEY"
-curl -s "localhost:8080/api/v1/accounts/$ALICE/entries" -H "X-API-Key: $API_KEY"
+curl -s "localhost:8080/api/v1/accounts/$ALICE/entries?limit=2" -H "X-API-Key: $API_KEY"
+# Response includes "nextCursor"/"hasMore"; page again with
+# ?limit=2&cursor=<nextCursor> until "hasMore" is false.
 ```
 
 Expected failure modes:
