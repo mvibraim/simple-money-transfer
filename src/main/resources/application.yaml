@@ -15,6 +15,18 @@ spring:
       # failing fast with a 503 a client can retry.
       maximum-pool-size: 20
       connection-timeout: 3000
+      # compose.yaml's postgres command also sets these (plus two
+      # superuser-only GUCs this least-privilege role can't SET:
+      # deadlock_timeout, log_lock_waits - those stay compose-only as
+      # diagnostics, not safety). Repeated here, per-session, so the
+      # actual safety net survives deploying against a Postgres this repo
+      # doesn't control (e.g. managed RDS/Cloud SQL) - without it, a
+      # contended lock waits forever there instead of failing into a
+      # retryable 503, and the pool exhausts silently.
+      connection-init-sql: >-
+        SET lock_timeout = '3s';
+        SET statement_timeout = '15s';
+        SET idle_in_transaction_session_timeout = '60s'
   jpa:
     hibernate:
       ddl-auto: validate

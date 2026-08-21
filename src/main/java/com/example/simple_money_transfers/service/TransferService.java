@@ -59,7 +59,11 @@ public class TransferService {
 		this.self = self;
 	}
 
-	@Transactional
+	// A portable, engine-independent bound (works on H2 too, unlike the
+	// Postgres-only session timeouts in application.yaml's
+	// hikari.connection-init-sql) so a stuck lock wait can never hang this
+	// transaction indefinitely regardless of server configuration.
+	@Transactional(timeout = 10)
 	public Transfer execute(TransferCommand command) {
 		if (command.sourceAccountId().equals(command.targetAccountId())) {
 			throw new SelfTransferException();
@@ -120,30 +124,35 @@ public class TransferService {
 	 * caller to restate the currency would only invite a spurious mismatch. Reuses
 	 * {@link #execute}, so this funding path gets every invariant (locking, atomicity,
 	 * the balanced ledger) that the core transfer already established, for free.
+	 * <p>
+	 * Resolves only ids/currency here, never a managed {@link Account} - see
+	 * {@link AccountRepository#lockAllById}'s Javadoc for why loading either account
+	 * before {@code execute}'s lock query would turn that lock into an upgrade on stale
+	 * state.
 	 */
 	@Transactional
 	public Transfer deposit(UUID accountId, BigDecimal amount, String reference) {
-		Account target = requireAccount(accountId);
-		Account system = systemAccountFor(target.getCurrency());
-		return self.execute(new TransferCommand(system.getId(), target.getId(), amount, target.getCurrency(),
-				TransferKind.DEPOSIT, reference));
+		String currency = requireCurrency(accountId);
+		UUID systemAccountId = requireSystemAccountId(currency);
+		return self.execute(
+				new TransferCommand(systemAccountId, accountId, amount, currency, TransferKind.DEPOSIT, reference));
 	}
 
 	@Transactional
 	public Transfer withdraw(UUID accountId, BigDecimal amount, String reference) {
-		Account source = requireAccount(accountId);
-		Account system = systemAccountFor(source.getCurrency());
-		return self.execute(new TransferCommand(source.getId(), system.getId(), amount, source.getCurrency(),
-				TransferKind.WITHDRAWAL, reference));
+		String currency = requireCurrency(accountId);
+		UUID systemAccountId = requireSystemAccountId(currency);
+		return self.execute(
+				new TransferCommand(accountId, systemAccountId, amount, currency, TransferKind.WITHDRAWAL, reference));
 	}
 
-	private Account requireAccount(UUID id) {
-		return accountRepository.findById(id)
-			.orElseThrow(() -> new NotFoundException("Account %s not found".formatted(id)));
+	private String requireCurrency(UUID accountId) {
+		return accountRepository.findCurrencyById(accountId)
+			.orElseThrow(() -> new NotFoundException("Account %s not found".formatted(accountId)));
 	}
 
-	private Account systemAccountFor(String currency) {
-		return accountRepository.findByAccountTypeAndCurrency(AccountType.SYSTEM, currency)
+	private UUID requireSystemAccountId(String currency) {
+		return accountRepository.findIdByAccountTypeAndCurrency(AccountType.SYSTEM, currency)
 			.orElseThrow(() -> new UnsupportedCurrencyException(currency));
 	}
 
