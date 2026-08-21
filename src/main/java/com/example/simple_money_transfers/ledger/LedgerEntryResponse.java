@@ -4,24 +4,12 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-public record LedgerEntryResponse(
-		Long id,
-		UUID transferId,
-		Direction direction,
-		BigDecimal amount,
-		String currency,
-		BigDecimal balanceAfter,
-		Instant createdAt) {
+public record LedgerEntryResponse(Long id, UUID transferId, Direction direction, BigDecimal amount, String currency,
+		BigDecimal balanceAfter, Instant createdAt) {
 
 	public static LedgerEntryResponse from(LedgerEntry entry) {
-		return new LedgerEntryResponse(
-				entry.getId(),
-				entry.getTransferId(),
-				entry.getDirection(),
-				entry.getAmount(),
-				entry.getCurrency(),
-				entry.getBalanceAfter(),
-				entry.getCreatedAt());
+		return new LedgerEntryResponse(entry.getId(), entry.getTransferId(), entry.getDirection(), entry.getAmount(),
+				entry.getCurrency(), entry.getBalanceAfter(), entry.getCreatedAt());
 	}
 
 }

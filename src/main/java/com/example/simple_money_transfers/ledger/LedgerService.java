@@ -14,6 +14,7 @@ import com.example.simple_money_transfers.error.NotFoundException;
 public class LedgerService {
 
 	private final AccountRepository accountRepository;
+
 	private final LedgerEntryRepository ledgerEntryRepository;
 
 	public LedgerService(AccountRepository accountRepository, LedgerEntryRepository ledgerEntryRepository) {

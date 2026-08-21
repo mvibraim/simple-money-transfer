@@ -28,10 +28,13 @@ import com.example.simple_money_transfers.transfer.WithdrawalRequest;
 public class AccountController {
 
 	private final AccountService accountService;
+
 	private final TransferOrchestrator transferOrchestrator;
+
 	private final LedgerService ledgerService;
 
-	public AccountController(AccountService accountService, TransferOrchestrator transferOrchestrator, LedgerService ledgerService) {
+	public AccountController(AccountService accountService, TransferOrchestrator transferOrchestrator,
+			LedgerService ledgerService) {
 		this.accountService = accountService;
 		this.transferOrchestrator = transferOrchestrator;
 		this.ledgerService = ledgerService;
@@ -41,7 +44,7 @@ public class AccountController {
 	public ResponseEntity<AccountResponse> create(@Valid @RequestBody CreateAccountRequest request) {
 		Account account = accountService.createAccount(request);
 		return ResponseEntity.created(URI.create("/api/v1/accounts/" + account.getId()))
-				.body(AccountResponse.from(account));
+			.body(AccountResponse.from(account));
 	}
 
 	@GetMapping("/{id}")
@@ -55,27 +58,21 @@ public class AccountController {
 	}
 
 	@PostMapping("/{id}/deposits")
-	public ResponseEntity<String> deposit(
-			@PathVariable UUID id,
-			@RequestHeader("Idempotency-Key") String idempotencyKey,
-			Principal principal,
+	public ResponseEntity<String> deposit(@PathVariable UUID id,
+			@RequestHeader("Idempotency-Key") String idempotencyKey, Principal principal,
 			@Valid @RequestBody DepositRequest request) {
 		return transferOrchestrator.deposit(principal.getName(), idempotencyKey, id, request);
 	}
 
 	@PostMapping("/{id}/withdrawals")
-	public ResponseEntity<String> withdraw(
-			@PathVariable UUID id,
-			@RequestHeader("Idempotency-Key") String idempotencyKey,
-			Principal principal,
+	public ResponseEntity<String> withdraw(@PathVariable UUID id,
+			@RequestHeader("Idempotency-Key") String idempotencyKey, Principal principal,
 			@Valid @RequestBody WithdrawalRequest request) {
 		return transferOrchestrator.withdraw(principal.getName(), idempotencyKey, id, request);
 	}
 
 	@GetMapping("/{id}/entries")
-	public LedgerHistoryResponse entries(
-			@PathVariable UUID id,
-			@RequestParam(defaultValue = "0") int page,
+	public LedgerHistoryResponse entries(@PathVariable UUID id, @RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "20") int size) {
 		// Ordering is fixed to id DESC (matching F08's idx_ledger_account_history
 		// index) and is not client-selectable - only page/size are.

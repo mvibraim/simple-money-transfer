@@ -54,8 +54,8 @@ class IdempotencyIT extends AbstractIntegrationTest {
 	}
 
 	private Account fundedAccount(String ref, BigDecimal balance, String currency) {
-		Account account = accountRepository.save(
-				new Account(ref, "Holder " + ref, AccountType.CUSTOMER, currency, AccountStatus.ACTIVE));
+		Account account = accountRepository
+			.save(new Account(ref, "Holder " + ref, AccountType.CUSTOMER, currency, AccountStatus.ACTIVE));
 		if (balance.signum() > 0) {
 			transferService.deposit(account.getId(), balance, null);
 		}
@@ -75,35 +75,34 @@ class IdempotencyIT extends AbstractIntegrationTest {
 		String key = UUID.randomUUID().toString();
 		String body = transferBody(source.getId(), target.getId(), "30.00");
 
-		MvcResult first = mockMvc.perform(post("/api/v1/transfers")
-						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-						.header("Idempotency-Key", key)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(body))
-				.andExpect(status().isCreated())
-				.andReturn();
+		MvcResult first = mockMvc
+			.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+				.header("Idempotency-Key", key)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body))
+			.andExpect(status().isCreated())
+			.andReturn();
 
-		MvcResult second = mockMvc.perform(post("/api/v1/transfers")
-						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-						.header("Idempotency-Key", key)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(body))
-				.andExpect(status().isCreated())
-				.andReturn();
+		MvcResult second = mockMvc
+			.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+				.header("Idempotency-Key", key)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body))
+			.andExpect(status().isCreated())
+			.andReturn();
 
-		assertThat(second.getResponse().getContentAsString())
-				.isEqualTo(first.getResponse().getContentAsString());
+		assertThat(second.getResponse().getContentAsString()).isEqualTo(first.getResponse().getContentAsString());
 		assertThat(accountRepository.findById(source.getId()).orElseThrow().getBalance())
-				.isEqualByComparingTo("70.0000");
+			.isEqualByComparingTo("70.0000");
 		assertThat(accountRepository.findById(target.getId()).orElseThrow().getBalance())
-				.isEqualByComparingTo("30.0000");
+			.isEqualByComparingTo("30.0000");
 
 		// Excludes fundedAccount's own setup deposit - only the TRANSFER
 		// under test should ever produce a second transfer row if replay
 		// were broken.
 		Long transferCount = jdbcClient.sql("SELECT COUNT(*) FROM transfer WHERE kind = 'TRANSFER'")
-				.query(Long.class)
-				.single();
+			.query(Long.class)
+			.single();
 		assertThat(transferCount).isEqualTo(1);
 	}
 
@@ -113,20 +112,20 @@ class IdempotencyIT extends AbstractIntegrationTest {
 		Account target = fundedAccount("F2", new BigDecimal("0.00"), "USD");
 		String key = UUID.randomUUID().toString();
 
-		mockMvc.perform(post("/api/v1/transfers")
-						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-						.header("Idempotency-Key", key)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(transferBody(source.getId(), target.getId(), "10.00")))
-				.andExpect(status().isCreated());
+		mockMvc
+			.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+				.header("Idempotency-Key", key)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(transferBody(source.getId(), target.getId(), "10.00")))
+			.andExpect(status().isCreated());
 
-		mockMvc.perform(post("/api/v1/transfers")
-						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-						.header("Idempotency-Key", key)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(transferBody(source.getId(), target.getId(), "20.00")))
-				.andExpect(status().isUnprocessableContent())
-				.andExpect(jsonPath("$.status").value(422));
+		mockMvc
+			.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+				.header("Idempotency-Key", key)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(transferBody(source.getId(), target.getId(), "20.00")))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.status").value(422));
 	}
 
 	@Test
@@ -140,13 +139,15 @@ class IdempotencyIT extends AbstractIntegrationTest {
 		ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 		try {
 			List<Callable<Integer>> tasks = IntStream.range(0, concurrency)
-					.<Callable<Integer>>mapToObj(i -> () -> mockMvc.perform(post("/api/v1/transfers")
-									.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-									.header("Idempotency-Key", key)
-									.contentType(MediaType.APPLICATION_JSON)
-									.content(body))
-							.andReturn().getResponse().getStatus())
-					.toList();
+				.<Callable<Integer>>mapToObj(i -> () -> mockMvc
+					.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+						.header("Idempotency-Key", key)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body))
+					.andReturn()
+					.getResponse()
+					.getStatus())
+				.toList();
 
 			List<Future<Integer>> futures = executor.invokeAll(tasks);
 			List<Integer> statuses = futures.stream().map(f -> {
@@ -165,12 +166,12 @@ class IdempotencyIT extends AbstractIntegrationTest {
 		}
 
 		Long transferCount = jdbcClient.sql("SELECT COUNT(*) FROM transfer WHERE source_account_id = ?")
-				.param(source.getId())
-				.query(Long.class)
-				.single();
+			.param(source.getId())
+			.query(Long.class)
+			.single();
 		assertThat(transferCount).isEqualTo(1);
 		assertThat(accountRepository.findById(source.getId()).orElseThrow().getBalance())
-				.isEqualByComparingTo("90.0000");
+			.isEqualByComparingTo("90.0000");
 	}
 
 	@Test
@@ -182,25 +183,25 @@ class IdempotencyIT extends AbstractIntegrationTest {
 
 		// First attempt: rejected for insufficient funds. The claim rolls
 		// back with the transaction, so the key is never recorded as used.
-		mockMvc.perform(post("/api/v1/transfers")
-						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-						.header("Idempotency-Key", key)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(body))
-				.andExpect(status().isUnprocessableContent());
+		mockMvc
+			.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+				.header("Idempotency-Key", key)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body))
+			.andExpect(status().isUnprocessableContent());
 
 		// Fund the account, then retry the identical request with the same key.
 		transferService.deposit(source.getId(), new BigDecimal("10.00"), null);
 
-		mockMvc.perform(post("/api/v1/transfers")
-						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-						.header("Idempotency-Key", key)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(body))
-				.andExpect(status().isCreated());
+		mockMvc
+			.perform(post("/api/v1/transfers").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+				.header("Idempotency-Key", key)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body))
+			.andExpect(status().isCreated());
 
 		assertThat(accountRepository.findById(target.getId()).orElseThrow().getBalance())
-				.isEqualByComparingTo("10.0000");
+			.isEqualByComparingTo("10.0000");
 	}
 
 }

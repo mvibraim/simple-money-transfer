@@ -16,16 +16,16 @@ import com.example.simple_money_transfers.idempotency.IdempotencyRecordRepositor
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * A separate bean from {@link TransferOrchestrator} on purpose: Spring's
- * transactional proxy only intercepts calls that arrive from a different
- * bean, so {@code @Transactional} here would be silently skipped if this
- * method lived on the orchestrator and were called via {@code this.}.
+ * A separate bean from {@link TransferOrchestrator} on purpose: Spring's transactional
+ * proxy only intercepts calls that arrive from a different bean, so
+ * {@code @Transactional} here would be silently skipped if this method lived on the
+ * orchestrator and were called via {@code this.}.
  * <p>
- * {@code action} and the idempotency claim insert run in one transaction.
- * If the claim insert's flush fails on the unique index, this whole
- * transaction rolls back - including whatever {@code action} already did
- * (locking accounts, mutating balances, writing ledger entries) - so a
- * losing concurrent duplicate never leaves a partial transfer behind.
+ * {@code action} and the idempotency claim insert run in one transaction. If the claim
+ * insert's flush fails on the unique index, this whole transaction rolls back - including
+ * whatever {@code action} already did (locking accounts, mutating balances, writing
+ * ledger entries) - so a losing concurrent duplicate never leaves a partial transfer
+ * behind.
  */
 @Component
 class IdempotentTransferAttempt {
@@ -34,6 +34,7 @@ class IdempotentTransferAttempt {
 	private EntityManager entityManager;
 
 	private final IdempotencyRecordRepository idempotencyRecordRepository;
+
 	private final JsonMapper jsonMapper;
 
 	IdempotentTransferAttempt(IdempotencyRecordRepository idempotencyRecordRepository, JsonMapper jsonMapper) {
@@ -46,8 +47,8 @@ class IdempotentTransferAttempt {
 		Transfer transfer = action.get();
 		String body = jsonMapper.writeValueAsString(TransferResponse.from(transfer));
 
-		idempotencyRecordRepository.save(
-				new IdempotencyRecord(clientId, idempotencyKey, fingerprint, transfer.getId(), 201, body));
+		idempotencyRecordRepository
+			.save(new IdempotencyRecord(clientId, idempotencyKey, fingerprint, transfer.getId(), 201, body));
 		// Forces the unique-index check now rather than at transaction
 		// commit, so a violation surfaces to the caller (TransferOrchestrator)
 		// promptly and unambiguously - by this point nothing else in this
@@ -55,8 +56,8 @@ class IdempotentTransferAttempt {
 		entityManager.flush();
 
 		return ResponseEntity.created(URI.create("/api/v1/transfers/" + transfer.getId()))
-				.contentType(MediaType.APPLICATION_JSON)
-				.body(body);
+			.contentType(MediaType.APPLICATION_JSON)
+			.body(body);
 	}
 
 }

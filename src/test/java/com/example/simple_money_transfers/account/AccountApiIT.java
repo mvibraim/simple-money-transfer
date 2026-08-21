@@ -30,87 +30,82 @@ class AccountApiIT extends AbstractIntegrationTest {
 
 	@Test
 	void createThenFetchRoundTrip() throws Exception {
-		MvcResult created = mockMvc.perform(post("/api/v1/accounts")
-						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("""
-								{"holderName":"Alice","currency":"USD"}"""))
-				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.holderName").value("Alice"))
-				.andExpect(jsonPath("$.currency").value("USD"))
-				.andExpect(jsonPath("$.balance").value("0.0000"))
-				.andExpect(jsonPath("$.status").value("ACTIVE"))
-				.andExpect(jsonPath("$.accountType").value("CUSTOMER"))
-				.andReturn();
+		MvcResult created = mockMvc
+			.perform(post("/api/v1/accounts").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"holderName":"Alice","currency":"USD"}"""))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.holderName").value("Alice"))
+			.andExpect(jsonPath("$.currency").value("USD"))
+			.andExpect(jsonPath("$.balance").value("0.0000"))
+			.andExpect(jsonPath("$.status").value("ACTIVE"))
+			.andExpect(jsonPath("$.accountType").value("CUSTOMER"))
+			.andReturn();
 
 		String id = jsonMapper.readTree(created.getResponse().getContentAsString()).path("id").asString();
 
 		mockMvc.perform(get("/api/v1/accounts/" + id).header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.holderName").value("Alice"))
-				.andExpect(jsonPath("$.id").value(id));
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.holderName").value("Alice"))
+			.andExpect(jsonPath("$.id").value(id));
 
 		mockMvc.perform(get("/api/v1/accounts/" + id + "/balance").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.balance").value("0.0000"))
-				.andExpect(jsonPath("$.currency").value("USD"))
-				.andExpect(jsonPath("$.asOf").exists());
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.balance").value("0.0000"))
+			.andExpect(jsonPath("$.currency").value("USD"))
+			.andExpect(jsonPath("$.asOf").exists());
 	}
 
 	@Test
 	void missingHolderNameIsRejected() throws Exception {
-		mockMvc.perform(post("/api/v1/accounts")
-						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("""
-								{"holderName":"","currency":"USD"}"""))
-				.andExpect(status().isBadRequest());
+		mockMvc
+			.perform(post("/api/v1/accounts").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"holderName":"","currency":"USD"}"""))
+			.andExpect(status().isBadRequest());
 	}
 
 	@Test
 	void malformedCurrencyShapeIsRejected() throws Exception {
-		mockMvc.perform(post("/api/v1/accounts")
-						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("""
-								{"holderName":"Alice","currency":"us"}"""))
-				.andExpect(status().isBadRequest());
+		mockMvc
+			.perform(post("/api/v1/accounts").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"holderName":"Alice","currency":"us"}"""))
+			.andExpect(status().isBadRequest());
 	}
 
 	@Test
 	void unknownCurrencyCodeIsRejected() throws Exception {
-		mockMvc.perform(post("/api/v1/accounts")
-						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("""
-								{"holderName":"Alice","currency":"ZZZ"}"""))
-				.andExpect(status().isBadRequest());
+		mockMvc
+			.perform(post("/api/v1/accounts").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"holderName":"Alice","currency":"ZZZ"}"""))
+			.andExpect(status().isBadRequest());
 	}
 
 	@Test
 	void unknownAccountIdReturns404() throws Exception {
-		mockMvc.perform(get("/api/v1/accounts/" + java.util.UUID.randomUUID())
-						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
-				.andExpect(status().isNotFound());
+		mockMvc.perform(
+				get("/api/v1/accounts/" + java.util.UUID.randomUUID()).header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
+			.andExpect(status().isNotFound());
 	}
 
 	@Test
 	void malformedAccountIdReturns400() throws Exception {
-		mockMvc.perform(get("/api/v1/accounts/not-a-uuid")
-						.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
-				.andExpect(status().isBadRequest());
+		mockMvc.perform(get("/api/v1/accounts/not-a-uuid").header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY))
+			.andExpect(status().isBadRequest());
 	}
 
 	@Test
 	void missingApiKeyIsRejectedOnEveryEndpoint() throws Exception {
-		mockMvc.perform(post("/api/v1/accounts")
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("""
-								{"holderName":"Alice","currency":"USD"}"""))
-				.andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/v1/accounts").contentType(MediaType.APPLICATION_JSON).content("""
+				{"holderName":"Alice","currency":"USD"}""")).andExpect(status().isUnauthorized());
 
-		mockMvc.perform(get("/api/v1/accounts/" + java.util.UUID.randomUUID()))
-				.andExpect(status().isUnauthorized());
+		mockMvc.perform(get("/api/v1/accounts/" + java.util.UUID.randomUUID())).andExpect(status().isUnauthorized());
 	}
 
 }

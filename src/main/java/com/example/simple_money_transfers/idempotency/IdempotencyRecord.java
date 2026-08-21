@@ -14,13 +14,13 @@ import org.hibernate.annotations.CreationTimestamp;
 
 /**
  * Stores only successful outcomes - {@code transfer_id} is {@code NOT
- * NULL} at the database level, so a record without a transfer would be a
- * contradiction. Immutable by construction: no setters, and {@link
- * IdempotencyRecordRepository} exposes no update or delete method.
+ * NULL} at the database level, so a record without a transfer would be a contradiction.
+ * Immutable by construction: no setters, and {@link IdempotencyRecordRepository} exposes
+ * no update or delete method.
  */
 @Entity
 @Table(name = "idempotency_record",
-		uniqueConstraints = @UniqueConstraint(columnNames = {"client_id", "idempotency_key"}))
+		uniqueConstraints = @UniqueConstraint(columnNames = { "client_id", "idempotency_key" }))
 public class IdempotencyRecord {
 
 	@Id

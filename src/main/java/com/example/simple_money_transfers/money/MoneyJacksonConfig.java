@@ -13,9 +13,8 @@ import tools.jackson.databind.ValueSerializer;
 import tools.jackson.databind.module.SimpleModule;
 
 /**
- * Amounts serialize as JSON strings, not bare numbers, so a JavaScript
- * client (backed by IEEE 754 doubles) can't lose precision before the
- * value ever reaches this service.
+ * Amounts serialize as JSON strings, not bare numbers, so a JavaScript client (backed by
+ * IEEE 754 doubles) can't lose precision before the value ever reaches this service.
  */
 @Configuration
 public class MoneyJacksonConfig {

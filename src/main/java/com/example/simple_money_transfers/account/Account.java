@@ -63,7 +63,8 @@ public class Account {
 		// JPA
 	}
 
-	public Account(String accountRef, String holderName, AccountType accountType, String currency, AccountStatus status) {
+	public Account(String accountRef, String holderName, AccountType accountType, String currency,
+			AccountStatus status) {
 		this.accountRef = accountRef;
 		this.holderName = holderName;
 		this.accountType = accountType;
