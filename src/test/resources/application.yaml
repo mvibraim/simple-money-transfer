@@ -22,6 +22,16 @@ spring:
     problemdetails:
       enabled: true
 
+springdoc:
+  # This file, not src/main/resources/application.yaml, is what a
+  # @SpringBootTest loads (classpath lookup only finds the first
+  # application.yaml, and test resources precede main on the test
+  # classpath) - so this has to be repeated here, not just in main's.
+  # Without it, OpenApiContractIT would also pick up test-only
+  # controllers like exception/ProbeController via full-context
+  # component scanning.
+  packages-to-scan: com.example.simple_money_transfers.controller
+
 app:
   security:
     api-keys:
