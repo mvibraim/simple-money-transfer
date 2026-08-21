@@ -17,15 +17,13 @@ public class SecurityConfig {
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, AppProperties appProperties, JsonMapper jsonMapper)
 			throws Exception {
-		http
-				.csrf(csrf -> csrf.disable())
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/actuator/health").permitAll()
-						.anyRequest().authenticated())
-				.exceptionHandling(exceptions -> exceptions
-						.authenticationEntryPoint(new ProblemDetailAuthenticationEntryPoint(jsonMapper)))
-				.addFilterBefore(new ApiKeyAuthFilter(appProperties), UsernamePasswordAuthenticationFilter.class);
+		http.csrf(csrf -> csrf.disable())
+			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			.authorizeHttpRequests(
+					auth -> auth.requestMatchers("/actuator/health").permitAll().anyRequest().authenticated())
+			.exceptionHandling(exceptions -> exceptions
+				.authenticationEntryPoint(new ProblemDetailAuthenticationEntryPoint(jsonMapper)))
+			.addFilterBefore(new ApiKeyAuthFilter(appProperties), UsernamePasswordAuthenticationFilter.class);
 		return http.build();
 	}
 

@@ -49,8 +49,8 @@ public class Transfer {
 		// JPA
 	}
 
-	public Transfer(UUID sourceAccountId, UUID targetAccountId, BigDecimal amount, String currency,
-			TransferKind kind, String reference) {
+	public Transfer(UUID sourceAccountId, UUID targetAccountId, BigDecimal amount, String currency, TransferKind kind,
+			String reference) {
 		this.sourceAccountId = sourceAccountId;
 		this.targetAccountId = targetAccountId;
 		this.amount = amount;

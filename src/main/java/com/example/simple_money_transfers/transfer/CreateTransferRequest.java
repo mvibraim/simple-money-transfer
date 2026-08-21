@@ -8,10 +8,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
-public record CreateTransferRequest(
-		@NotNull UUID sourceAccountId,
-		@NotNull UUID targetAccountId,
-		@NotNull @Positive BigDecimal amount,
-		@NotNull @Pattern(regexp = "[A-Z]{3}") String currency,
+public record CreateTransferRequest(@NotNull UUID sourceAccountId, @NotNull UUID targetAccountId,
+		@NotNull @Positive BigDecimal amount, @NotNull @Pattern(regexp = "[A-Z]{3}") String currency,
 		@Size(max = 140) String reference) {
 }

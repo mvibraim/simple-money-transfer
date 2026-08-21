@@ -15,11 +15,10 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 
 /**
- * Immutable by construction, not just by database trigger: no field here
- * has a setter, and {@link LedgerEntryRepository} exposes no update or
- * delete method. This is the application-level half of the immutability
- * guarantee - the Postgres-only trigger (V3) is the other half, and
- * neither alone is sufficient.
+ * Immutable by construction, not just by database trigger: no field here has a setter,
+ * and {@link LedgerEntryRepository} exposes no update or delete method. This is the
+ * application-level half of the immutability guarantee - the Postgres-only trigger (V3)
+ * is the other half, and neither alone is sufficient.
  */
 @Entity
 @Table(name = "ledger_entry")

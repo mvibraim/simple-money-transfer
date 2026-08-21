@@ -13,6 +13,7 @@ import com.example.simple_money_transfers.money.MoneyNormalizer;
 public class AccountService {
 
 	private static final String REF_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
 	private static final SecureRandom RANDOM = new SecureRandom();
 
 	private final AccountRepository accountRepository;
@@ -24,15 +25,15 @@ public class AccountService {
 	@Transactional
 	public Account createAccount(CreateAccountRequest request) {
 		MoneyNormalizer.requireValidCurrency(request.currency());
-		Account account = new Account(
-				generateAccountRef(), request.holderName(), AccountType.CUSTOMER, request.currency(), AccountStatus.ACTIVE);
+		Account account = new Account(generateAccountRef(), request.holderName(), AccountType.CUSTOMER,
+				request.currency(), AccountStatus.ACTIVE);
 		return accountRepository.save(account);
 	}
 
 	@Transactional(readOnly = true)
 	public Account getAccount(UUID id) {
 		return accountRepository.findById(id)
-				.orElseThrow(() -> new NotFoundException("Account %s not found".formatted(id)));
+			.orElseThrow(() -> new NotFoundException("Account %s not found".formatted(id)));
 	}
 
 	private static String generateAccountRef() {

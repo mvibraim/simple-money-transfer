@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TransferController {
 
 	private final TransferService transferService;
+
 	private final TransferOrchestrator transferOrchestrator;
 
 	public TransferController(TransferService transferService, TransferOrchestrator transferOrchestrator) {
@@ -26,9 +27,7 @@ public class TransferController {
 	}
 
 	@PostMapping
-	public ResponseEntity<String> create(
-			@RequestHeader("Idempotency-Key") String idempotencyKey,
-			Principal principal,
+	public ResponseEntity<String> create(@RequestHeader("Idempotency-Key") String idempotencyKey, Principal principal,
 			@Valid @RequestBody CreateTransferRequest request) {
 		return transferOrchestrator.transfer(principal.getName(), idempotencyKey, request);
 	}

@@ -14,13 +14,12 @@ import org.springframework.data.repository.query.Param;
 public interface AccountRepository extends JpaRepository<Account, UUID> {
 
 	/**
-	 * Locks every requested account in a single query, ordered ascending
-	 * by id. This ordering is the entire deadlock-avoidance mechanism for
-	 * the transfer write path (F09): two opposing concurrent transfers
-	 * that each locked "source, then target" separately could deadlock,
-	 * but because every caller acquires locks through this one ordered
-	 * query, one always wins the race and the other simply waits. No
-	 * other code path may lock account rows outside this method.
+	 * Locks every requested account in a single query, ordered ascending by id. This
+	 * ordering is the entire deadlock-avoidance mechanism for the transfer write path
+	 * (F09): two opposing concurrent transfers that each locked "source, then target"
+	 * separately could deadlock, but because every caller acquires locks through this one
+	 * ordered query, one always wins the race and the other simply waits. No other code
+	 * path may lock account rows outside this method.
 	 */
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select a from Account a where a.id in :ids order by a.id")
