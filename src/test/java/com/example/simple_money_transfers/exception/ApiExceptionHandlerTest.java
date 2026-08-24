@@ -83,6 +83,14 @@ class ApiExceptionHandlerTest {
 	}
 
 	@Test
+	void optimisticLockConflictMapsTo503() throws Exception {
+		mockMvc.perform(post("/probe/optimistic-lock-conflict"))
+			.andExpect(status().isServiceUnavailable())
+			.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.status").value(503));
+	}
+
+	@Test
 	void unexpectedExceptionMapsTo500WithNoLeakedDetail() throws Exception {
 		mockMvc.perform(post("/probe/boom"))
 			.andExpect(status().isInternalServerError())

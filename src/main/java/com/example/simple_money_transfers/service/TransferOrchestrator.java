@@ -93,20 +93,22 @@ public class TransferOrchestrator {
 			return idempotentTransferAttempt.run(clientId, idempotencyKey, fingerprint, action);
 		}
 		catch (DataIntegrityViolationException ex) {
-			// The only plausible source of this exception within run()'s
-			// scope is the idempotency-key unique constraint - action's own
-			// work always creates a fresh transfer id, so it can never
-			// collide with anything F08's constraints protect.
-			return replayExisting(clientId, idempotencyKey, fingerprint);
+			// Usually the idempotency-key unique constraint - but action's
+			// own work runs inside this same transaction, so a genuine
+			// integrity violation (e.g. account_no_overdraft firing on a
+			// balance-check bug) surfaces here too. Only treat this as a
+			// replay if a matching record actually exists; otherwise
+			// rethrow so the real violation isn't misreported as an
+			// idempotency-store inconsistency.
+			return replayExisting(clientId, idempotencyKey, fingerprint, ex);
 		}
 	}
 
-	private ResponseEntity<String> replayExisting(String clientId, String idempotencyKey, String fingerprint) {
+	private ResponseEntity<String> replayExisting(String clientId, String idempotencyKey, String fingerprint,
+			DataIntegrityViolationException cause) {
 		IdempotencyRecord existing = idempotencyRecordRepository
 			.findByClientIdAndIdempotencyKey(clientId, idempotencyKey)
-			.orElseThrow(() -> new IllegalStateException(
-					"Expected an idempotency record for key %s after a unique-constraint violation, found none"
-						.formatted(idempotencyKey)));
+			.orElseThrow(() -> cause);
 		if (!existing.getFingerprint().equals(fingerprint)) {
 			throw new IdempotencyConflictException(idempotencyKey);
 		}

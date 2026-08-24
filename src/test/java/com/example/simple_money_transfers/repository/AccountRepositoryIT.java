@@ -3,12 +3,17 @@ package com.example.simple_money_transfers.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.UUID;
 
+import jakarta.persistence.LockModeType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.example.simple_money_transfers.model.entity.Account;
@@ -23,6 +28,28 @@ class AccountRepositoryIT extends AbstractIntegrationTest {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+
+	/**
+	 * The ascending-id lock ordering (F09) is the entire deadlock-avoidance mechanism for
+	 * the transfer write path, and it is currently enforced only by code review - nothing
+	 * else in the suite would fail if a future edit weakened the lock mode or dropped the
+	 * {@code ORDER BY}. This is a red build for exactly that: deleting the ordering, or
+	 * downgrading the lock, fails here instead of silently degrading a production-only
+	 * guarantee (see {@code docs/features/00-index.md}'s testing-strategy section on what
+	 * F15's concurrency tests can and can't prove on H2).
+	 */
+	@Test
+	void lockAllByIdLocksPessimisticallyInAscendingIdOrder() throws NoSuchMethodException {
+		Method lockAllById = AccountRepository.class.getMethod("lockAllById", Collection.class);
+
+		Lock lock = lockAllById.getAnnotation(Lock.class);
+		assertThat(lock).isNotNull();
+		assertThat(lock.value()).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
+
+		Query query = lockAllById.getAnnotation(Query.class);
+		assertThat(query).isNotNull();
+		assertThat(query.value().strip().toLowerCase()).endsWith("order by a.id");
+	}
 
 	@Test
 	void savesAndReloadsAnAccountAtZeroBalance() {

@@ -4,8 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.dao.PessimisticLockingFailureException;
-import org.springframework.dao.QueryTimeoutException;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.TransientDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -104,12 +104,24 @@ public class ApiExceptionHandler {
 
 	/**
 	 * Pessimistic locking (F09) turns one slow or stuck transaction into held row locks;
-	 * without this mapping, pool exhaustion or a lock/ statement timeout under contention
+	 * without this mapping, pool exhaustion or a lock/statement timeout under contention
 	 * would fall through to the generic 500 handler below and look like an application
 	 * bug rather than a temporary capacity limit a client can reasonably retry.
+	 * <p>
+	 * {@link TransientDataAccessException} is the common Spring supertype of pessimistic
+	 * lock failures, deadlocks, serialization failures, query timeouts, and - critically
+	 * - {@code ObjectOptimisticLockingFailureException}: the account lock query can throw
+	 * that as a lock *upgrade* failure whenever an account was already loaded into the
+	 * persistence context before the pessimistic lock query runs (see
+	 * {@code AccountRepository.lockAllById}'s Javadoc).
+	 * {@link DataAccessResourceFailureException} is listed separately because it sits
+	 * under Spring's non-transient branch despite representing exactly this kind of
+	 * temporary capacity failure - it's what a lazily-acquired JDBC connection failure
+	 * (Hikari pool exhaustion on a plain, non-read-only transaction) actually surfaces
+	 * as.
 	 */
-	@ExceptionHandler({ CannotCreateTransactionException.class, PessimisticLockingFailureException.class,
-			QueryTimeoutException.class })
+	@ExceptionHandler({ CannotCreateTransactionException.class, TransientDataAccessException.class,
+			DataAccessResourceFailureException.class })
 	public ProblemDetail handleTemporarilyUnavailable(Exception ex) {
 		log.warn("Temporarily unavailable: {}", ex.getMessage());
 		return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,

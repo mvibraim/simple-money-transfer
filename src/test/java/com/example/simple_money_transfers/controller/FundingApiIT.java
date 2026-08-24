@@ -1,10 +1,20 @@
 package com.example.simple_money_transfers.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.IntFunction;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +23,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import com.example.simple_money_transfers.config.ApiKeyAuthFilter;
 import com.example.simple_money_transfers.model.entity.Account;
@@ -43,6 +54,43 @@ class FundingApiIT extends AbstractIntegrationTest {
 
 	private static String freshIdempotencyKey() {
 		return UUID.randomUUID().toString();
+	}
+
+	/**
+	 * A {@link CountDownLatch} start barrier, not a bare
+	 * {@code Executors.newVirtualThreadPerTaskExecutor().invokeAll(...)}: without it
+	 * every worker could in principle run to completion before the next one starts, and a
+	 * fully serialized run would pass every assertion below identically to a genuinely
+	 * concurrent one. Waiting for every worker to report ready before releasing any of
+	 * them is what makes these tests actually prove overlap.
+	 */
+	private List<Integer> postConcurrently(int concurrency, IntFunction<MockHttpServletRequestBuilder> requestFor)
+			throws InterruptedException {
+		CountDownLatch ready = new CountDownLatch(concurrency);
+		CountDownLatch start = new CountDownLatch(1);
+		ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+		try {
+			List<Future<Integer>> futures = IntStream.range(0, concurrency).<Callable<Integer>>mapToObj(i -> () -> {
+				ready.countDown();
+				start.await();
+				return mockMvc.perform(requestFor.apply(i)).andReturn().getResponse().getStatus();
+			}).map(executor::submit).toList();
+
+			ready.await();
+			start.countDown();
+
+			return futures.stream().map(future -> {
+				try {
+					return future.get();
+				}
+				catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			}).toList();
+		}
+		finally {
+			executor.shutdown();
+		}
 	}
 
 	@Test
@@ -189,6 +237,64 @@ class FundingApiIT extends AbstractIntegrationTest {
 
 		Account reloaded = accountRepository.findById(account.getId()).orElseThrow();
 		org.assertj.core.api.Assertions.assertThat(reloaded.getBalance()).isEqualByComparingTo("20.0000");
+	}
+
+	/**
+	 * Regression test for the funding path pre-reading accounts unlocked before
+	 * {@code TransferService.execute}'s lock query: each request's own unlocked read of
+	 * this shared target account can be made stale by another request committing in
+	 * between, which previously surfaced as an unhandled
+	 * {@code ObjectOptimisticLockingFailureException} (500) instead of the pessimistic
+	 * lock simply serializing the two requests.
+	 */
+	@Test
+	void concurrentDepositsToTheSameAccountAllSucceed() throws Exception {
+		Account account = accountRepository
+			.save(new Account("CD1", "Concurrent", AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE));
+		int concurrency = 8;
+		BigDecimal amountEach = new BigDecimal("10.00");
+
+		List<Integer> statuses = postConcurrently(concurrency,
+				i -> post("/api/v1/accounts/" + account.getId() + "/deposits")
+					.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+					.header("Idempotency-Key", freshIdempotencyKey())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"amount":"10.00"}"""));
+
+		assertThat(statuses).hasSize(concurrency).allMatch(status -> status == 201);
+		Account reloaded = accountRepository.findById(account.getId()).orElseThrow();
+		assertThat(reloaded.getBalance()).isEqualByComparingTo(amountEach.multiply(BigDecimal.valueOf(concurrency)));
+	}
+
+	/**
+	 * Same underlying bug as {@link #concurrentDepositsToTheSameAccountAllSucceed}, but
+	 * the shared row racing across requests is the per-currency SYSTEM account rather
+	 * than a customer account - every deposit and withdrawal in a currency touches it, so
+	 * concurrent funding to completely different customer accounts was equally affected.
+	 */
+	@Test
+	void concurrentDepositsToDifferentAccountsInTheSameCurrencyAllSucceed() throws Exception {
+		int concurrency = 8;
+		List<Account> accounts = IntStream.range(0, concurrency)
+			.mapToObj(i -> accountRepository
+				.save(new Account("CD2-" + i, "Concurrent " + i, AccountType.CUSTOMER, "USD", AccountStatus.ACTIVE)))
+			.toList();
+		BigDecimal amountEach = new BigDecimal("10.00");
+
+		List<Integer> statuses = postConcurrently(concurrency,
+				i -> post("/api/v1/accounts/" + accounts.get(i).getId() + "/deposits")
+					.header(ApiKeyAuthFilter.HEADER_NAME, VALID_KEY)
+					.header("Idempotency-Key", freshIdempotencyKey())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"amount":"10.00"}"""));
+
+		assertThat(statuses).hasSize(concurrency).allMatch(status -> status == 201);
+		for (Account account : accounts) {
+			Account reloaded = accountRepository.findById(account.getId()).orElseThrow();
+			assertThat(reloaded.getBalance()).isEqualByComparingTo(amountEach);
+		}
 	}
 
 }

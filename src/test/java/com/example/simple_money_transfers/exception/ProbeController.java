@@ -5,6 +5,7 @@ import java.util.UUID;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,6 +50,16 @@ class ProbeController {
 	@PostMapping("/invalid-cursor")
 	String invalidCursor() {
 		throw new InvalidCursorException("not-a-real-cursor");
+	}
+
+	/**
+	 * Simulates the lock-upgrade failure a stale unlocked read can produce (see
+	 * {@code AccountRepository.lockAllById}'s Javadoc) - the 503 branch is advertised on
+	 * every money-moving endpoint's OpenAPI contract but was previously untested.
+	 */
+	@PostMapping("/optimistic-lock-conflict")
+	String optimisticLockConflict() {
+		throw new ObjectOptimisticLockingFailureException(String.class, "probe-entity");
 	}
 
 	@GetMapping("/param-validated")
